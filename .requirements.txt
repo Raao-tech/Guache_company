@@ -1,0 +1,17 @@
+# --- Servidor Web & API ---
+fastapi==0.115.0
+uvicorn[standard]==0.31.0
+pydantic==2.13.4
+pydantic_core==2.46.4
+
+# --- Integraciones & IA ---
+groq==1.6.0
+google-genai==2.17.0
+python-telegram-bot==22.8
+
+# --- Utilidades & Red ---
+httpx==0.28.1
+requests==2.34.2
+python-dotenv==1.2.2
+anyio==4.14.2
+websockets==16.1.1

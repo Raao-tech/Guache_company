@@ -1,0 +1,11 @@
+# Entorno virtual de Python
+venv/
+__pycache__/
+*.pyc
+
+# Variables de Entorno y Credenciales (¡SÚPER IMPORTANTES!)
+.env
+
+# Archivos del Sistema
+.DS_Store
+Thumbs.db

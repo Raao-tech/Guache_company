@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agroindustria Guache | Planta Agroindustrial Acarigua</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- SISTEMA DE NOTIFICACIONES TOAST -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- NAVBAR -->
+    <header class="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <span class="logo-icon">🌾</span>
+                <span class="logo-text">Agroguache <strong>C.A.</strong></span>
+            </div>
+            <nav class="nav-links">
+                <a href="#productos">Productos</a>
+                <a href="#servicios">Servicios</a>
+                <a href="#cotizar" class="btn-primary-sm">Cotizar al Mayor</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <span class="badge">📍 Acarigua, Estado Portuguesa</span>
+                <h1>Procesamiento y Nutrición Agroindustrial de Calidad</h1>
+                <p>Procesamos y distribuimos harinas, cereales, aceites y alimentos balanceados para animales. Más de 25 años impulsando la soberanía alimentaria del país.</p>
+                <div class="hero-actions">
+                    <a href="#cotizar" class="btn-primary">Solicitar Cotización</a>
+                    <button onclick="toggleChat()" class="btn-secondary">💬 Hablar con Guache</button>
+                </div>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <h3>12.000 Ton</h3>
+                    <p>Capacidad de procesamiento / mes</p>
+                </div>
+                <div class="stat-card">
+                    <h3>40.000 Ton</h3>
+                    <p>Almacenamiento en Silos</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUCTOS -->
+    <section id="productos" class="section">
+        <div class="container">
+            <h2 class="section-title">Catálogo de Productos al Mayor</h2>
+            <p class="section-subtitle">Atendemos a distribuidores, industrias y cadenas de comercialización.</p>
+            
+            <div class="product-grid">
+                <div class="product-card">
+                    <span class="sku">SKU: HM-050</span>
+                    <h3>Harina de Maíz Precocida</h3>
+                    <p>Presentaciones en sacos industriales de 20 KG y 50 KG, o bultos de 1 KG.</p>
+                </div>
+                <div class="product-card">
+                    <span class="sku">SKU: HT-045</span>
+                    <h3>Harina de Trigo Panadera</h3>
+                    <p>Fuerza y absorción ideal para panificación industrial. Presentación 45 KG.</p>
+                </div>
+                <div class="product-card">
+                    <span class="sku">SKU: AE-040</span>
+                    <h3>Alimento Aves Engorde</h3>
+                    <p>Fórmula balanceada con alto valor proteico. Sacos de 40 KG.</p>
+                </div>
+                <div class="product-card">
+                    <span class="sku">SKU: CB-040</span>
+                    <h3>Concentrado Bovino</h3>
+                    <p>Nutrición de alto rendimiento para ganado de leche y carne. Sacos de 40 KG.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FORMULARIO DE COTIZACIÓN -->
+    <section id="cotizar" class="section section-alt">
+        <div class="container form-container">
+            <div class="form-header">
+                <h2>Solicitud de Cotización Directa</h2>
+                <p>Completa los datos y nuestro departamento comercial te contactará de inmediato.</p>
+            </div>
+            <form id="quoteForm" onsubmit="enviarCotizacion(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nombre">Nombre y Apellido *</label>
+                        <input type="text" id="nombre" required placeholder="Ej. Carlos Mendoza">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefono">Teléfono de Contacto (WhatsApp) *</label>
+                        <input type="tel" id="telefono" required placeholder="Ej. +58 412 1234567">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="empresa">Empresa / Razón Social</label>
+                        <input type="text" id="empresa" placeholder="Ej. Distribuidora El Llano C.A.">
+                    </div>
+                    <div class="form-group">
+                        <label for="sku">Producto de Interés *</label>
+                        <select id="sku" required>
+                            <option value="">Selecciona un producto...</option>
+                            <option value="HM-050">Harina de Maíz Precocida (SKU: HM-050)</option>
+                            <option value="HT-045">Harina de Trigo Panadera (SKU: HT-045)</option>
+                            <option value="AR-050">Arroz Pulido Tipo I (SKU: AR-050)</option>
+                            <option value="AE-040">Alimento Aves Engorde (SKU: AE-040)</option>
+                            <option value="CB-040">Concentrado Bovino (SKU: CB-040)</option>
+                            <option value="AV-018">Aceite Vegetal 18L (SKU: AV-018)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cantidad">Cantidad Estimada (Toneladas) *</label>
+                        <input type="number" step="0.5" id="cantidad" required min="1" placeholder="Ej. 10">
+                    </div>
+                    <div class="form-group">
+                        <label for="destino">Ciudad / Estado de Entrega *</label>
+                        <input type="text" id="destino" required placeholder="Ej. Barquisimeto, Estado Lara">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="observaciones">Observaciones / Requerimientos Especiales</label>
+                    <textarea id="observaciones" rows="3" placeholder="Detalles sobre despacho, empaque o frecuencia de compra..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary btn-full" id="btnSubmitQuote">Enviar Solicitud de Cotización</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- CHAT FLOTANTE: GUACHE EL ZORRO -->
+    <div class="chat-widget">
+        <button class="chat-trigger" onclick="toggleChat()" aria-label="Abrir chat">
+            <span class="chat-icon">🦊</span>
+            <span class="chat-label">Asistente Guache</span>
+        </button>
+
+        <div class="chat-window hidden" id="chatWindow">
+            <div class="chat-header">
+                <div class="chat-avatar">🦊</div>
+                <div class="chat-info">
+                    <h4>Guache el Zorro</h4>
+                    <span class="status-online">● En línea</span>
+                </div>
+                <button class="chat-close" onclick="toggleChat()">✕</button>
+            </div>
+
+            <!-- CHIPS DE SUGERENCIA RÁPIDA -->
+            <div class="chat-suggestions">
+                <button class="chip" onclick="usarSugerencia('¿Cuáles son los SKUs de Alimento Animal?')">🌾 Alimentos Animales</button>
+                <button class="chip" onclick="usarSugerencia('¿Qué servicios de planta ofrecen en Acarigua?')">🏬 Servicios de Planta</button>
+                <button class="chip" onclick="usarSugerencia('¿Cuál es el horario de atención?')">🕒 Horarios</button>
+            </div>
+
+            <div class="chat-body" id="chatMessages">
+                <div class="message bot-message">
+                    ¡Hola! Soy <strong>Guache</strong> 🦊, asesor comercial de la planta en Acarigua. ¿En qué producto o servicio te puedo orientar hoy?
+                </div>
+            </div>
+
+            <form class="chat-footer" onsubmit="enviarMensajeChat(event)">
+                <input type="text" id="chatInput" placeholder="Escribe tu consulta aquí..." required autocomplete="off">
+                <button type="submit" id="chatSendBtn" title="Enviar mensaje">➤</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
