@@ -4,33 +4,38 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from src.config import TELEGRAM_TOKEN
 from src.services.llm_service import generar_respuesta_llm
 
-#  1. Configuaración de Logs (Para depuración en consola)
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logger = logging.getLogger("agroguache_telegram")
 
-# 2. Manejador del comando /start
+# Manejador del comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("HOLA!! Soy Guache el zorro asistente de la compañía. Encantado de poder ayudarte.")
+    await update.message.reply_text(
+        "¡Hola! Soy Guache 🦊, asistente comercial de Agroindustria Guache. "
+        "Encantado de poder ayudarte. ¿En qué producto estás interesado?"
+    )
 
-# 3. Manejador para mensajes de texto respondidos meddiante LLMs
+# Manejador para mensajes de texto
 async def responder_con_ia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     texto_usuario = update.message.text
 
     # Muestra el estado "Escribiendo..." en Telegram
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    # Consulta a la IA
+    # Consulta a la IA (Groq)
     respuesta_ia = await generar_respuesta_llm(texto_usuario)
 
     await update.message.reply_text(respuesta_ia)
 
-# 4. Función de inicialización y arranque del servidor
-def run_telegram_bot():
+def crear_aplicacion_bot():
+    """
+    Construye la aplicación de Telegram pero NO inicia el polling.
+    Esto permite que FastAPI controle cuándo encenderlo y apagarlo.
+    """
+    if not TELEGRAM_TOKEN:
+        logger.warning("No se encontró TELEGRAM_TOKEN. El bot de Telegram estará deshabilitado.")
+        return None
+        
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), responder_con_ia))
-
-    print("El Zorro Guache listo para cazar más ventas. Esperando consultas de clientes...")
-    app.run_polling()
+    
+    return app
