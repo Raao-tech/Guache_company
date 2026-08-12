@@ -97,6 +97,19 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     respuesta: str
 
+class CotizacionDetalle(BaseModel):
+    id: int
+    folio: str
+    nombre_contacto: str
+    telefono: str
+    empresa: Optional[str]
+    sku_producto: str
+    cantidad_toneladas: float
+    destino_despacho: str
+    observaciones: Optional[str]
+    fecha_registro: datetime
+
+    model_config = {"from_attributes": True}
 # ------------------------------------------------------------------
 # ENDPOINTS DE LA API
 # ------------------------------------------------------------------
@@ -141,6 +154,20 @@ async def registrar_cotizacion(payload: CotizacionRequest, db: Session = Depends
         db.rollback() # Revertir si hay error
         raise HTTPException(status_code=500, detail="Error interno al registrar la cotización.")
 
+@app.get("/api/cotizaciones", response_model=list[CotizacionDetalle], tags=["Administración"])
+async def listar_cotizaciones(db: Session = Depends(get_db)):
+    """
+    Devuelve el historial completo de cotizaciones registradas, 
+    ordenadas desde la más reciente a la más antigua.
+    """
+    try:
+        # Consultamos todas las cotizaciones ordenadas por fecha descendente
+        cotizaciones = db.query(CotizacionDB).order_by(CotizacionDB.fecha_registro.desc()).all()
+        return cotizaciones
+    except Exception as e:
+        logger.error(f"Error al obtener las cotizaciones: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al consultar la base de datos.")
+    
 @app.post("/api/chat", response_model=ChatResponse, tags=["Asistente Guache"])
 async def chat_guache(payload: ChatRequest):
     try:
