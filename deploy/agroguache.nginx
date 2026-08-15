@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name tu_ip_publica_o_dominio.com;
+    server_name 93.189.88.76;
 
     # Opcional pero recomendado para producción: 
     # Dejar que Nginx sirva los estáticos directamente (es más rápido)

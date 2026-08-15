@@ -1,31 +1,102 @@
-/* RESET & BASE */
+/* ===================================================
+   1. VARIABLES Y RESET GLOBAL
+   =================================================== */
+:root {
+    --primary: #2E7D32;       /* Verde Agro */
+    --primary-hover: #1B5E20; /* Verde oscuro */
+    --secondary: #F57C00;     /* Naranja (Zorro Guache) */
+    --bg-light: #F9FAFB;      /* Fondo claro */
+    --text-main: #1F2937;     /* Texto principal */
+    --text-muted: #4B5563;    /* Texto secundario */
+    --border: #E5E7EB;        /* Bordes sutiles */
+    --white: #FFFFFF;
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth; /* Desplazamiento suave en los enlaces */
+}
+
 body {
-    font-family: 'Inter', sans-serif;
-    color: #2d3748;
-    background-color: #f8fafc;
+    font-family: var(--font-body);
+    color: var(--text-main);
     line-height: 1.6;
+    background-color: var(--bg-light);
 }
 
-h1, h2, h3, h4 {
-    font-family: 'Outfit', sans-serif;
-}
-
+/* Contenedor principal responsive */
 .container {
-    max-width: 1120px;
+    width: 100%;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 0 1.5rem;
 }
 
-/* NAVBAR */
+/* ===================================================
+   2. BOTONES Y UTILIDADES
+   =================================================== */
+.btn-primary, .btn-primary-sm, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: var(--white);
+    padding: 0.8rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-primary-sm {
+    background-color: var(--primary);
+    color: var(--white);
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+}
+
+.btn-secondary {
+    background-color: var(--white);
+    color: var(--text-main);
+    border: 2px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+.btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-full {
+    width: 100%;
+    padding: 1rem;
+}
+
+/* ===================================================
+   3. NAVEGACIÓN (NAVBAR)
+   =================================================== */
 .navbar {
-    background: #ffffff;
-    border-bottom: 1px solid #e2e8f0;
+    background-color: var(--white);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -35,85 +106,35 @@ h1, h2, h3, h4 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 70px;
+    padding: 1rem 1.5rem;
 }
 
 .logo {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.25rem;
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
 }
 
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 2rem;
 }
 
 .nav-links a {
     text-decoration: none;
-    color: #4a5568;
+    color: var(--text-main);
     font-weight: 500;
-    transition: color 0.2s;
 }
 
-.nav-links a:hover {
-    color: #166534;
-}
-
-/* BUTTONS */
-.btn-primary {
-    background-color: #166534;
-    color: #ffffff;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    transition: background-color 0.2s, transform 0.1s;
-}
-
-.btn-primary:hover {
-    background-color: #14532d;
-    transform: translateY(-1px);
-}
-
-.btn-primary-sm {
-    background-color: #166534;
-    color: #ffffff;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.btn-secondary {
-    background-color: #ffffff;
-    color: #166534;
-    border: 2px solid #166534;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-secondary:hover {
-    background-color: #f0fdf4;
-}
-
-.btn-full {
-    width: 100%;
-}
-
-/* HERO */
+/* ===================================================
+   4. HERO SECTION
+   =================================================== */
 .hero {
+    background-color: var(--white);
     padding: 4rem 0;
-    background: linear-gradient(135deg, #f0fdf4 0%, #e2e8f0 100%);
 }
 
 .hero-grid {
@@ -124,26 +145,27 @@ h1, h2, h3, h4 {
 }
 
 .badge {
-    background-color: #dcfce7;
-    color: #166534;
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 0.35rem 0.75rem;
-    border-radius: 20px;
     display: inline-block;
+    background: #E8F5E9;
+    color: var(--primary);
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
     margin-bottom: 1rem;
 }
 
-.hero-content h1 {
-    font-size: 2.5rem;
-    line-height: 1.2;
-    margin-bottom: 1rem;
-    color: #0f172a;
+.hero h1 {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
 }
 
-.hero-content p {
+.hero p {
     font-size: 1.1rem;
-    color: #475569;
+    color: var(--text-muted);
     margin-bottom: 2rem;
 }
 
@@ -159,86 +181,78 @@ h1, h2, h3, h4 {
 }
 
 .stat-card {
-    background: #ffffff;
-    padding: 1.5rem;
+    background: var(--bg-light);
+    padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
+    text-align: center;
 }
 
 .stat-card h3 {
-    font-size: 1.8rem;
-    color: #166534;
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    color: var(--primary);
 }
 
-/* SECTIONS */
+/* ===================================================
+   5. PRODUCTOS
+   =================================================== */
 .section {
-    padding: 4rem 0;
+    padding: 5rem 0;
 }
 
 .section-alt {
-    background-color: #f1f5f9;
+    background-color: var(--white);
 }
 
 .section-title {
-    font-size: 2rem;
+    font-family: var(--font-heading);
+    font-size: 2.5rem;
     text-align: center;
     margin-bottom: 0.5rem;
 }
 
 .section-subtitle {
     text-align: center;
-    color: #64748b;
+    color: var(--text-muted);
     margin-bottom: 3rem;
 }
 
-/* PRODUCT GRID */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1.5rem;
 }
 
 .product-card {
-    background: #ffffff;
+    background: var(--white);
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--border);
+    transition: box-shadow 0.3s ease;
 }
 
 .product-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
 }
 
 .sku {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--secondary);
     font-weight: 700;
-    color: #166534;
-    background: #dcfce7;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
 }
 
 .product-card h3 {
-    margin: 0.75rem 0 0.5rem 0;
-    font-size: 1.2rem;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    margin: 0.5rem 0;
 }
 
-.product-card p {
-    font-size: 0.9rem;
-    color: #64748b;
-}
-
-/* FORM */
+/* ===================================================
+   6. FORMULARIO DE COTIZACIÓN
+   =================================================== */
 .form-container {
-    max-width: 650px;
-    background: #ffffff;
-    padding: 2.5rem;
-    border-radius: 16px;
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
-    border: 1px solid #e2e8f0;
+    max-width: 800px;
 }
 
 .form-header {
@@ -247,305 +261,261 @@ h1, h2, h3, h4 {
 }
 
 .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .form-group {
-    margin-bottom: 1.25rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .form-group label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 0.4rem;
-    color: #334155;
-}
-
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-family: inherit;
+    font-weight: 500;
     font-size: 0.95rem;
-    transition: border-color 0.2s;
 }
 
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+.form-group input, 
+.form-group select, 
+.form-group textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    background-color: var(--bg-light);
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus, 
+.form-group select:focus, 
+.form-group textarea:focus {
     outline: none;
-    border-color: #166534;
-    box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.1);
+    border-color: var(--primary);
+    background-color: var(--white);
 }
 
-/* CHAT WIDGET */
+/* ===================================================
+   7. CHAT WIDGET (GUACHE EL ZORRO)
+   =================================================== */
 .chat-widget {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 999;
 }
 
 .chat-trigger {
-    background: #166534;
-    color: #ffffff;
+    background-color: var(--primary);
+    color: var(--white);
     border: none;
-    padding: 0.85rem 1.25rem;
     border-radius: 50px;
+    padding: 0.8rem 1.5rem;
+    font-size: 1.1rem;
+    font-family: var(--font-heading);
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    transition: transform 0.2s, background-color 0.2s;
+    transition: transform 0.2s;
 }
 
 .chat-trigger:hover {
-    transform: scale(1.04);
-    background-color: #14532d;
+    transform: scale(1.05);
 }
 
 .chat-window {
     position: absolute;
-    bottom: 70px;
+    bottom: 4.5rem;
     right: 0;
-    width: 360px;
-    height: 520px;
-    background: #ffffff;
+    width: 380px;
+    background: var(--white);
     border-radius: 16px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid #e2e8f0;
-    transition: opacity 0.2s transform 0.2s;
+    transition: all 0.3s ease;
+    border: 1px solid var(--border);
 }
 
 .chat-window.hidden {
-    display: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
 }
 
 .chat-header {
-    background: #166534;
-    color: #ffffff;
+    background-color: var(--primary);
+    color: var(--white);
     padding: 1rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
 }
 
 .chat-avatar {
-    font-size: 1.5rem;
-    background: rgba(255,255,255,0.2);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 2rem;
 }
 
 .chat-info h4 {
-    font-size: 1rem;
     margin: 0;
+    font-family: var(--font-heading);
 }
 
 .status-online {
-    font-size: 0.75rem;
-    color: #86efac;
+    font-size: 0.8rem;
+    color: #A5D6A7;
 }
 
 .chat-close {
     margin-left: auto;
     background: none;
     border: none;
-    color: #ffffff;
-    font-size: 1.2rem;
+    color: var(--white);
+    font-size: 1.5rem;
     cursor: pointer;
-    opacity: 0.8;
 }
 
-.chat-close:hover { opacity: 1; }
-
-/* CHIPS DE SUGERENCIA */
 .chat-suggestions {
     display: flex;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: #f8fafc;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 1rem;
     overflow-x: auto;
-    white-space: nowrap;
-}
-
-.chat-suggestions::-webkit-scrollbar {
-    height: 4px;
-}
-
-.chat-suggestions::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
 }
 
 .chip {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    color: #334155;
-    padding: 0.35rem 0.75rem;
-    border-radius: 16px;
-    font-size: 0.75rem;
-    font-weight: 500;
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
-.chip:hover {
-    border-color: #166534;
-    color: #166534;
-    background: #f0fdf4;
-}
-
-/* CHAT BODY & MESSAGES */
 .chat-body {
-    flex: 1;
-    padding: 1rem;
+    height: 300px;
     overflow-y: auto;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    background: #fafafa;
-}
-
-.chat-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.chat-body::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
+    gap: 1rem;
 }
 
 .message {
     max-width: 85%;
-    padding: 0.75rem 1rem;
+    padding: 0.8rem 1rem;
     border-radius: 12px;
-    font-size: 0.9rem;
-    line-height: 1.4;
-    word-break: break-word;
+    font-size: 0.95rem;
 }
 
 .bot-message {
-    background: #ffffff;
-    color: #1e293b;
+    background: #E8F5E9;
+    color: var(--text-main);
     align-self: flex-start;
-    border: 1px solid #e2e8f0;
     border-bottom-left-radius: 2px;
 }
 
 .user-message {
-    background: #166534;
-    color: #ffffff;
+    background: var(--primary);
+    color: var(--white);
     align-self: flex-end;
     border-bottom-right-radius: 2px;
 }
 
-/* ANIMACIÓN ESCRIBIENDO */
-.typing-dots {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.typing-dots span {
-    width: 6px;
-    height: 6px;
-    background-color: #64748b;
-    border-radius: 50%;
-    animation: typing 1.4s infinite ease-in-out both;
-}
-
-.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typing {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
-}
-
-/* CHAT FOOTER */
 .chat-footer {
     display: flex;
-    padding: 0.75rem;
-    background: #ffffff;
-    border-top: 1px solid #e2e8f0;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
     gap: 0.5rem;
 }
 
 .chat-footer input {
     flex: 1;
-    padding: 0.6rem 0.8rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 0.8rem 1rem;
     outline: none;
 }
 
-.chat-footer input:focus {
-    border-color: #166534;
-}
-
 .chat-footer button {
-    background: #166534;
-    color: white;
+    background: var(--secondary);
+    color: var(--white);
     border: none;
-    padding: 0.6rem 0.9rem;
-    border-radius: 8px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
     cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s;
+    font-size: 1.2rem;
 }
 
-.chat-footer button:hover {
-    background: #14532d;
-}
-
-/* TOAST NOTIFICATIONS */
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.toast {
-    background: #ffffff;
-    color: #1e293b;
-    padding: 1rem 1.25rem;
-    border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-    border-left: 5px solid #166534;
-    min-width: 280px;
-    font-size: 0.9rem;
-    animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.toast.error {
-    border-left-color: #ef4444;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
+/* ===================================================
+   8. MEDIA QUERIES (RESPONSIVE MÓVIL Y TABLET)
+   =================================================== */
+@media (max-width: 900px) {
+    .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
     }
-    to {
-        transform: translateX(0);
-        opacity: 1;
+    
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero-actions {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Navbar en Móvil */
+    .nav-container {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.8rem;
+    }
+
+    /* Formularios en Móvil */
+    .form-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    /* Prevenir auto-zoom en iOS al tocar inputs */
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea {
+        font-size: 16px;
+        min-height: 48px;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    /* Chat en Móvil (Casi pantalla completa) */
+    .chat-widget {
+        bottom: 1rem;
+        right: 1rem;
+    }
+    
+    .chat-window {
+        width: calc(100vw - 2rem);
+        bottom: 4rem;
     }
 }
