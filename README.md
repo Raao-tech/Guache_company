@@ -2,6 +2,8 @@
 
 Web + bot conversacional de **Guache, C.A.**, agroindustria venezolana. Backend en FastAPI, bot de Telegram y asistente virtual "Guache" impulsado por LLM (Groq).
 
+En producción: https://guache.online
+
 ## Documentación
 
 - [`docs/EMPRESA.md`](docs/EMPRESA.md) — Perfil corporativo: quiénes somos, líneas de negocio, estrategia de expansión.

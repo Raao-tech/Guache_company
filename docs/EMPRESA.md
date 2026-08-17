@@ -143,6 +143,7 @@ El detalle técnico de esta iniciativa se documenta por separado para el equipo 
 - **Sede:** Zona Industrial, Acarigua, estado Portuguesa, Venezuela
 - **Presencia comercial:** Portuguesa, Mérida, Barinas, Zulia, Lara, Guárico y Cojedes
 - **Ventas / cotizaciones al mayor:** ventas@agroguache.com.ve
+- **Sitio web:** https://guache.online
 - **Canal digital:** sitio web y asistente virtual "Guache" (ver documento técnico)
 
 ---

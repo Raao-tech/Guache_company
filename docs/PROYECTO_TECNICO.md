@@ -138,7 +138,11 @@ No hay build tool (Webpack/Vite), no hay componentes, no hay gestor de paquetes 
 - **`agroguache.service`** — unit de systemd que corre `uvicorn main:app` con 2 workers, como usuario `root`, en un VPS.
 - **`agroguache.nginx`** — Nginx sirve `styles.css` y `app.js` directamente como estáticos (por performance) y hace proxy del resto del tráfico a FastAPI en `127.0.0.1:8000`.
 
-No hay contenedor Docker, ni pipeline de CI/CD documentado: el despliegue actual es manual sobre el VPS.
+**Producción:** el sitio corre en un VPS (antes accesible solo por IP `93.189.88.76`) y desde agosto 2026 responde en **https://guache.online** (y `www.guache.online`), con certificado TLS de Let's Encrypt vía Certbot (autorenovación configurada, vence 2026-11-12).
+
+> ⚠️ **Nota:** Certbot modifica la config de Nginx directamente en el servidor (agrega los bloques HTTPS y las rutas del certificado). El archivo `deploy/agroguache.nginx` de este repo todavía refleja la versión previa (solo HTTP + IP) — hay que sincronizarlo con el archivo real del VPS (`/etc/nginx/sites-enabled/agroguache`) para que el repo deje de estar desactualizado respecto a producción.
+
+Hay CI (tests automáticos, §7), pero no CD: el despliegue al VPS sigue siendo manual, sin contenedor Docker.
 
 ---
 
@@ -202,7 +206,7 @@ Los tests usan una base de datos SQLite temporal aislada (no tocan `cotizaciones
 Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de construir features nuevas encima**:
 
 1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
-2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. **Pendiente:** definir el/los dominio(s) reales de producción en el `.env` del VPS (hoy solo tiene el default de desarrollo).
+2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
 3. **Sin autenticación de usuarios/roles** — la protección del punto 1 es una clave de administrador compartida, no un sistema de usuarios. Sigue siendo un prerrequisito para el panel de administración (§8.2), que necesitará roles diferenciados (admin/secretaría vs. público).
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. **SQLite en un solo archivo** — válido para el volumen actual (cotizaciones B2B), pero no escala bien a concurrencia alta ni a un catálogo de e-commerce con pedidos, usuarios e inventario. Migrar a PostgreSQL es un prerrequisito realista para la fase de detal.
