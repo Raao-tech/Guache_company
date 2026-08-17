@@ -13,3 +13,6 @@ __pycache__/
 # Archivos del Sistema
 .DS_Store
 Thumbs.db
+
+# Tests
+.pytest_cache/

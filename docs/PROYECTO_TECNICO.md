@@ -40,6 +40,9 @@ No hay frontend framework, no hay autenticación, no hay panel de administració
 Project_0/
 ├── main.py                     # App FastAPI: endpoints, lifespan, montaje de estáticos
 ├── requirements.txt            # Dependencias de producción
+├── requirements-dev.txt        # + dependencias de desarrollo (pytest)
+├── pytest.ini                  # Configuración de pytest
+├── tests/                      # Suite de tests (pytest + TestClient)
 ├── .env / .env.example         # Variables de entorno (tokens, claves)
 ├── cotizaciones.db             # Base de datos SQLite (local, generada en runtime, NO versionada — ver §7)
 ├── alembic.ini                 # Configuración de Alembic (migraciones de BD)
@@ -145,7 +148,8 @@ No hay contenedor Docker, ni pipeline de CI/CD documentado: el despliegue actual
 |---|---|
 | Backend / API | Python 3.14, FastAPI, Uvicorn |
 | Validación de datos | Pydantic v2 |
-| Base de datos | SQLite + SQLAlchemy ORM |
+| Base de datos | SQLite + SQLAlchemy ORM, migraciones con Alembic |
+| Tests | pytest + `fastapi.testclient` |
 | Bot conversacional | python-telegram-bot |
 | LLM / IA | Groq API (`llama-3.1-8b-instant`) |
 | Frontend | HTML5 + CSS3 + JavaScript vanilla (sin framework) |
@@ -176,6 +180,15 @@ alembic upgrade head
 uvicorn main:app --reload --port 8000
 ```
 
+Para desarrollo (incluye pytest) instalar en su lugar `requirements-dev.txt`:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Los tests usan una base de datos SQLite temporal aislada (no tocan `cotizaciones.db`) y deshabilitan el bot de Telegram — no requieren red ni tokens reales, salvo las variables de entorno de `.env` (necesarias porque `src/config.py` falla al importar si faltan).
+
 - La web queda disponible en `http://localhost:8000`.
 - Documentación interactiva de la API (Swagger, autogenerada por FastAPI) en `http://localhost:8000/docs`.
 - Si no se configura `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`, `ADMIN_USERNAME` o `ADMIN_PASSWORD`, la app **falla al arrancar** (`src/config.py` lanza `ValueError`) — las cuatro son obligatorias hoy, no opcionales.
@@ -195,8 +208,8 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 5. **SQLite en un solo archivo** — válido para el volumen actual (cotizaciones B2B), pero no escala bien a concurrencia alta ni a un catálogo de e-commerce con pedidos, usuarios e inventario. Migrar a PostgreSQL es un prerrequisito realista para la fase de detal.
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
-8. **Sin tests automatizados** (unitarios ni de integración).
-9. **Sin CI/CD** — el despliegue al VPS es manual.
+8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
+9. ~~Sin CI~~ — **Resuelto parcialmente (agosto 2026).** GitHub Actions (`.github/workflows/tests.yml`) corre la suite de `pytest` en cada push/PR a `main`. **El despliegue al VPS sigue siendo manual** — falta el CD (§8.6).
 10. **Historial de chat no persistido** — se pierde al recargar la página; no hay forma de dar seguimiento a una conversación de un cliente.
 
 ---
@@ -239,7 +252,7 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 ### 8.6 Infraestructura y escalabilidad
 
 - Evaluar migración de SQLite → PostgreSQL antes de lanzar e-commerce real.
-- Introducir un pipeline de CI/CD básico (tests + despliegue) en lugar del despliegue manual actual.
+- Ya existe CI (tests automáticos en GitHub Actions, §7). Falta el **CD**: automatizar el despliegue al VPS en lugar del proceso manual actual.
 - Backups automáticos de base de datos (hoy no existen).
 - Contenerización (Docker) para reducir fricción entre entornos de desarrollo/producción, si el equipo crece.
 
@@ -251,6 +264,8 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 2. Levantar el proyecto en local (§6).
 3. Antes de tomar una tarea del roadmap (§8), verificar si depende de resolver primero algún punto de deuda técnica (§7) — en particular, **autenticación** es prerrequisito de casi todo lo nuevo (panel admin, gestión de pedidos, protección de datos de clientes).
 4. Mantener la separación de responsabilidades actual del repo (`src/services` para lógica externa/IA, `src/bots` para canales conversacionales, `src/database.py` para persistencia) al agregar nuevos módulos.
+5. Correr `pytest` (`pip install -r requirements-dev.txt`) antes de subir cambios, y agregar tests para el código nuevo en `tests/`.
+6. Si el cambio modifica columnas/tablas de `CotizacionDB`, generar la migración correspondiente (`alembic revision -m "..."`) en el mismo cambio — no editar el esquema a mano.
 
 ---
 
