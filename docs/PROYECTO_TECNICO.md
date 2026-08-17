@@ -162,7 +162,11 @@ Sitio estático, sin build step, sin framework, sin gestor de paquetes de fronte
 
 > ⚠️ **Nota:** Certbot modifica la config de Nginx directamente en el servidor (agregó los bloques HTTPS y las rutas del certificado). `deploy/agroguache.nginx` ya está sincronizado (agosto 2026) con el archivo real del VPS (`/etc/nginx/sites-enabled/agroguache`) — si Certbot vuelve a tocarlo (ej. al renovar o agregar un subdominio), hay que repetir la sincronización a mano, ya que Certbot no versiona sus cambios.
 
-Hay CI (tests automáticos, §7), pero no CD: el despliegue al VPS sigue siendo manual, sin contenedor Docker.
+**CI/CD (agosto 2026):** `.github/workflows/ci-cd.yml` tiene dos jobs:
+1. `test` — corre `pytest` en cada push y PR a `main`.
+2. `deploy` — solo en push directo a `main` (no en PRs) y solo si `test` pasó. Se conecta por SSH al VPS con una llave dedicada (`secrets.VPS_SSH_DEPLOY_KEY`, privada, vive únicamente en GitHub Secrets) y ejecuta `deploy/remote_deploy.sh` en el servidor: `git fetch` + `merge --ff-only` (nunca sobreescribe cambios locales sin avisar — si el merge no es fast-forward, el deploy falla en vez de descartar algo), reinstala dependencias, corre `alembic upgrade head`, reinicia `agroguache.service` y verifica `/api/health` antes de reportar éxito.
+
+La llave de deploy está restringida en el `authorized_keys` del VPS con un **forced command** (`command="/var/www/agroguache/deploy/remote_deploy.sh"`): sin importar qué comando le pida el cliente SSH, el servidor solo va a correr ese script — aunque la clave privada se filtrara, no permite ejecutar comandos arbitrarios en el servidor. No hay contenedor Docker todavía; el deploy sigue siendo directo sobre el filesystem del VPS vía git.
 
 **Backups:** `deploy/backup_db.py` hace un respaldo seguro de `cotizaciones.db` (usa el API de backup online de `sqlite3`, no una copia cruda — no corrompe el archivo aunque la app esté escribiendo) y guarda el resultado en `/var/backups/agroguache/`, con rotación automática (borra respaldos de más de 14 días). Corre una vez al día vía un timer de systemd. Es un backup **local al VPS** — protege contra una migración/deploy que rompa datos, pero no contra la pérdida total del servidor; si en el futuro se necesita eso, hay que sumar una copia off-site (ver §8.6).
 
@@ -256,7 +260,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
 8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
-9. ~~Sin CI~~ — **Resuelto parcialmente (agosto 2026).** GitHub Actions (`.github/workflows/tests.yml`) corre la suite de `pytest` en cada push/PR a `main`. **El despliegue al VPS sigue siendo manual** — falta el CD (§8.6).
+9. ~~Sin CI/CD~~ — **Resuelto (agosto 2026).** `.github/workflows/ci-cd.yml` corre `pytest` en cada push/PR a `main` (job `test`) y, si pasa y es un push directo a `main`, despliega automáticamente al VPS (job `deploy`, ver §4.6).
 10. **Historial de chat no persistido** — se pierde al recargar la página; no hay forma de dar seguimiento a una conversación de un cliente.
 
 ---
@@ -328,7 +332,7 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 
   `cotizaciones.db` se dejó en el VPS como respaldo (más una copia en `/root/pre_deploy_backups/`), sin borrar — la app ya no lo usa.
 
-- Ya existe CI (tests automáticos en GitHub Actions, §7). Falta el **CD**: automatizar el despliegue al VPS en lugar del proceso manual actual.
+- ~~CI/CD~~ — **Hecho (agosto 2026).** Ver §4.6 para el detalle del pipeline.
 - **Backups automáticos de base de datos: pendiente de nuevo.** El timer de systemd (`agroguache-backup.timer`, §4.6) nunca se llegó a instalar en el VPS, y de todas formas `backup_db.py` está escrito para SQLite (usa el backup API de `sqlite3`) — ahora que producción corre en Postgres, hay que reescribirlo para usar `pg_dump` antes de instalar el timer. Hoy producción no tiene backups automáticos corriendo. Sigue faltando además la copia off-site.
 - Contenerización (Docker) para reducir fricción entre entornos de desarrollo/producción, si el equipo crece.
 

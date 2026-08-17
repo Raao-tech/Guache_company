@@ -1,0 +1,48 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Configurar variables de entorno de prueba
+        run: |
+          cat <<EOF > .env
+          TELEGRAM_BOT_TOKEN=test-token
+          GROQ_API_KEY=test-key
+          ADMIN_USERNAME=admin
+          ADMIN_PASSWORD=test-password
+          EOF
+
+      - name: Correr tests
+        run: pytest
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar al VPS
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_SSH_DEPLOY_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          # El comando enviado acá no importa: el VPS tiene un "forced command"
+          # en authorized_keys que siempre ejecuta deploy/remote_deploy.sh
+          # sin importar qué se le pida por SSH (ver ese archivo para el detalle).
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@93.189.88.76 "deploy"
