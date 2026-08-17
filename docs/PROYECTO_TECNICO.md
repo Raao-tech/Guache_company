@@ -102,7 +102,7 @@ SQLAlchemy con un único modelo:
 
 - **`CotizacionDB`** — `id`, `folio` (único, ej. `COT-2026-A1B2C3D4`), `nombre_contacto`, `telefono`, `empresa` (opcional), `sku_producto`, `cantidad_toneladas`, `destino_despacho`, `observaciones` (opcional), `fecha_registro`.
 
-**Motor (SQLite / Postgres):** `SQLALCHEMY_DATABASE_URL` se toma de la variable de entorno `DATABASE_URL`; si no está definida, usa SQLite local (`sqlite:///./cotizaciones.db`) — así el desarrollo local no requiere tener Postgres instalado. En producción (VPS), `DATABASE_URL` apunta a Postgres (`postgresql+psycopg://...`, driver `psycopg` v3). Verificado a mano contra un Postgres real (esquema, inserts, autoincremento) — ver §8.6 para la migración de datos existentes.
+**Motor (SQLite / Postgres):** `SQLALCHEMY_DATABASE_URL` se toma de la variable de entorno `DATABASE_URL`; si no está definida, usa SQLite local (`sqlite:///./cotizaciones.db`) — así el desarrollo local no requiere tener Postgres instalado. **Producción corre en Postgres desde el 17 de agosto de 2026** (instalado nativo en el mismo VPS, base `agroguache`, usuario `agroguache_user`), con `DATABASE_URL` definida en el `.env` del servidor. `cotizaciones.db` se dejó en el VPS (`/var/www/agroguache/` y una copia extra en `/root/pre_deploy_backups/`) como respaldo de los datos previos a la migración, pero ya no lo usa la app.
 
 **Migraciones (Alembic):** el esquema no se crea con `create_all()` al arrancar — se gestiona con Alembic (`alembic/`, configurado en `alembic/env.py` para usar el mismo `Base`/URL que `src/database.py`, una única fuente de verdad, funciona igual para SQLite y Postgres). Cualquier cambio de columna/tabla debe ir acompañado de una migración nueva (`alembic revision -m "..."`, editar `upgrade()`/`downgrade()`).
 
@@ -237,7 +237,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
 3. **Sin autenticación de usuarios/roles** — la protección del punto 1 es una clave de administrador compartida, no un sistema de usuarios. Sigue siendo un prerrequisito para el panel de administración (§8.2), que necesitará roles diferenciados (admin/secretaría vs. público).
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
-5. ~~SQLite en un solo archivo~~ — **Código resuelto (agosto 2026).** La app soporta Postgres vía `DATABASE_URL` (§4.2), probado a mano de punta a punta (esquema, inserts, autoincremento). **Falta el corte real en producción:** instalar Postgres en el VPS, correr `alembic upgrade head` contra la base nueva, migrar los datos existentes con `deploy/migrate_sqlite_to_postgres.py`, y actualizar `DATABASE_URL` en el `.env` del VPS (pasos en §8.6). Hasta que se haga ese corte, producción sigue en SQLite.
+5. ~~SQLite en un solo archivo~~ — **Resuelto (17 de agosto de 2026).** Producción corre en Postgres (§4.2). Corte hecho con downtime de ~30 segundos; los 8 registros existentes migraron sin pérdida ni colisión de IDs (verificado fila por fila antes de dar el visto bueno). **Nota:** `deploy/backup_db.py` sigue usando el backup API de `sqlite3` — como producción ya no escribe en `cotizaciones.db`, ese script quedó apuntando a una base congelada. Hay que adaptarlo a `pg_dump` antes de instalar el timer de backups en el VPS (nunca se llegó a instalar, así que hoy producción no tiene backups automáticos corriendo).
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
 8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
@@ -283,7 +283,7 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 
 ### 8.6 Infraestructura y escalabilidad
 
-- ~~Evaluar migración de SQLite → PostgreSQL~~ — **Código listo (agosto 2026, §4.2/§7).** Falta ejecutar el corte en el VPS (instalado nativo en el mismo servidor, decisión tomada por costo). Pasos, en orden, corriendo como `root` en el VPS:
+- ~~Evaluar migración de SQLite → PostgreSQL~~ — **Hecho (17 de agosto de 2026).** Postgres instalado nativo en el mismo VPS (decisión tomada por costo). Referencia de los pasos que se corrieron como `root`, por si hay que repetir el proceso en otro entorno:
 
   ```bash
   # 1. Instalar Postgres
@@ -295,13 +295,15 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
   sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE agroguache TO agroguache_user;"
   sudo -u postgres psql -d agroguache -c "GRANT ALL ON SCHEMA public TO agroguache_user;"
 
-  # 3. Parar la app (para que no siga escribiendo en la SQLite vieja durante el corte)
+  # 3. Backup extra de cotizaciones.db fuera del repo, y parar la app
+  cp cotizaciones.db /root/pre_deploy_backups/cotizaciones_pre_postgres_$(date +%F_%H%M%S).db
   sudo systemctl stop agroguache.service
 
-  # 4. En /var/www/agroguache, con el venv activado y el código ya actualizado (git pull):
+  # 4. En /var/www/agroguache, con el venv activado y el código ya actualizado:
   export DATABASE_URL="postgresql+psycopg://agroguache_user:elegir-una-clave-segura@localhost:5432/agroguache"
   alembic upgrade head                              # crea el esquema en Postgres
   python deploy/migrate_sqlite_to_postgres.py        # copia los datos existentes
+  # verificar fila por fila antes de seguir (ver test del script)
 
   # 5. Agregar DATABASE_URL (la misma de arriba) al .env de producción, permanentemente
 
@@ -309,10 +311,10 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
   sudo systemctl start agroguache.service
   ```
 
-  Después de confirmar que todo funciona (`GET /api/cotizaciones` con auth, devuelve las filas migradas), conservar `cotizaciones.db` un tiempo como respaldo antes de borrarlo — no lo borra ningún script automáticamente.
+  `cotizaciones.db` se dejó en el VPS como respaldo (más una copia en `/root/pre_deploy_backups/`), sin borrar — la app ya no lo usa.
 
 - Ya existe CI (tests automáticos en GitHub Actions, §7). Falta el **CD**: automatizar el despliegue al VPS en lugar del proceso manual actual.
-- ~~Backups automáticos de base de datos~~ — **Resuelto parcialmente (agosto 2026).** Backup diario local al VPS con rotación (§4.6). Diseñado para SQLite — al migrar a Postgres (arriba) hay que adaptar `backup_db.py` a `pg_dump` en vez del backup API de `sqlite3`. Sigue faltando la copia off-site.
+- **Backups automáticos de base de datos: pendiente de nuevo.** El timer de systemd (`agroguache-backup.timer`, §4.6) nunca se llegó a instalar en el VPS, y de todas formas `backup_db.py` está escrito para SQLite (usa el backup API de `sqlite3`) — ahora que producción corre en Postgres, hay que reescribirlo para usar `pg_dump` antes de instalar el timer. Hoy producción no tiene backups automáticos corriendo. Sigue faltando además la copia off-site.
 - Contenerización (Docker) para reducir fricción entre entornos de desarrollo/producción, si el equipo crece.
 
 ---
