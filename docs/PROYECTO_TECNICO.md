@@ -57,10 +57,12 @@ Project_0/
 │   └── services/
 │       └── llm_service.py       # Cliente Groq + prompt del asistente "Guache"
 ├── web/
-│   ├── index.html               # Landing page (una sola página)
-│   ├── app.js                   # Lógica de cotización y chat (fetch a la API)
-│   ├── styles.css               # Estilos
-│   └── assets/                  # (vacío por ahora)
+│   ├── index.html               # Landing page: hero, servicios, rubros, mayorista, detal (preview), blog (teaser), cotizar
+│   ├── app.js                   # Lógica de cotización, chat y menú móvil (fetch a la API)
+│   ├── styles.css               # Estilos (incluye .media-slot, ver §4.5)
+│   └── blog/
+│       ├── index.html             # Listado de artículos
+│       └── *.html                 # Un artículo por archivo, sin backend/CMS (ver §4.5 y §8.3)
 ├── deploy/
 │   ├── agroguache.nginx           # Config de Nginx para el VPS de producción
 │   ├── agroguache.service         # Unit de systemd para correr uvicorn
@@ -128,14 +130,25 @@ Usa el cliente oficial de **Groq** (`AsyncGroq`), modelo `llama-3.1-8b-instant`.
 
 ### 4.5 Frontend web — `web/`
 
-Sitio estático de una sola página (sin build step, sin framework):
+Sitio estático, sin build step, sin framework, sin gestor de paquetes de frontend — HTML/CSS/JS plano servido directamente por FastAPI vía `StaticFiles`. Desde agosto de 2026, `index.html` dejó de ser una sola sección de catálogo y pasó a cubrir todo el recorrido comercial (mayorista, servicios, detal en preview) más un blog en páginas separadas.
 
+**`index.html` (secciones, en orden):**
 - **Hero** con propuesta de valor y estadísticas de planta.
-- **Catálogo de productos** (tarjetas estáticas, hardcodeadas en `index.html`).
+- **Servicios** (`#servicios`) — almacenamiento, asesoramiento técnico, venta de maquinaria (contenido de `EMPRESA.md` §6.3).
+- **Rubros** (`#rubros`) — café, maíz, cacao, cebada, arroz (`EMPRESA.md` §6.1).
+- **Catálogo al mayor** (`#productos`) — tarjetas de producto con SKU, hardcodeadas.
+- **Al Detal** (`#detal`) — panel de preview de la expansión a España/Colombia (`EMPRESA.md` §10). Es honesto sobre su estado: no hay carrito ni checkout (no existe ese backend todavía, ver §8.1), el único CTA funcional abre el chat con una pregunta prellenada (`preguntarSobreDetal()` en `app.js`).
+- **Blog (teaser)** (`#blog`) — 4 tarjetas que enlazan a `web/blog/`.
 - **Formulario de cotización** (`#cotizar`) → `POST /api/cotizar`.
-- **Widget de chat flotante** ("Guache el zorro") con chips de sugerencia rápida → `POST /api/chat`. El historial de conversación se mantiene solo en memoria del navegador (`chatHistory` en `app.js`), no se persiste en el backend.
+- **Footer** — contacto, navegación, estados con presencia.
 
-No hay build tool (Webpack/Vite), no hay componentes, no hay gestor de paquetes de frontend — es HTML/CSS/JS plano servido directamente por FastAPI vía `StaticFiles`.
+**Widget de chat flotante** ("Guache el zorro") con chips de sugerencia rápida → `POST /api/chat`, presente en todas las páginas (home y blog). El historial de conversación se mantiene solo en memoria del navegador (`chatHistory` en `app.js`), no se persiste en el backend.
+
+**Menú móvil:** a partir de 768px de ancho, la navegación colapsa a un botón hamburguesa (`inicializarMenuMovil()` en `app.js`); no depende de ningún framework, es toggle de clase CSS + `aria-expanded`.
+
+**`web/blog/`** — un artículo por archivo HTML (sin CMS, sin base de datos — es contenido estático de ejemplo, uno por cada tipo de cliente de `EMPRESA.md` §8: agricultores, productores pecuarios, distribuidores/mayoristas, y consumidor final de la futura venta al detal). `web/blog/index.html` lista los artículos. Cuando exista el panel de administración (§8.2/§8.3), esto debería migrar a contenido gestionado desde base de datos en vez de archivos HTML sueltos.
+
+**Sin imágenes reales todavía (a propósito):** en vez de fotos, los espacios visuales usan `.media-slot` (definido en `styles.css`) — un div con degradado de marca + un ícono/emoji centrado. La clase ya soporta que una `<img>` real se inserte dentro (`object-fit: cover` hace que encaje sin romper el diseño) y funciona igual de bien si no se inserta nada — pensado para que el futuro panel de administración pueda cargar fotos reales sin rediseñar nada.
 
 ### 4.6 Despliegue — `deploy/`
 
@@ -250,7 +263,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 
 ### 8.1 Tienda / venta al detal (e-commerce)
 
-Hoy el sitio solo permite **cotizar al mayor**. La estrategia de negocio requiere una sección donde el consumidor final pueda **comprar directamente** ciertos productos (presentaciones de detal: café, cacao, harinas, arroz, etc.).
+Hoy el sitio solo permite **cotizar al mayor**, más una sección de **preview** (`#detal` en `index.html`, agosto 2026) que presenta la categoría de productos que vendrá y deriva al chat — sin carrito, sin checkout, sin precios de detal (a propósito: no hay backend que los soporte todavía). La estrategia de negocio requiere ir más allá de ese preview y permitir que el consumidor final **compre directamente** ciertos productos (presentaciones de detal: café, cacao, harinas, arroz, etc.).
 
 Implica, como mínimo:
 - Modelo de datos de catálogo (productos de detal, precios, stock, imágenes) — independiente del catálogo mayorista actual.
@@ -261,8 +274,8 @@ Implica, como mínimo:
 
 ### 8.2 Panel de administración (CMS interno)
 
-Hoy **todo el contenido de la web está hardcodeado** en `index.html` (productos, textos, precios de referencia). La meta es que alguien del equipo de Guache — no necesariamente un desarrollador — pueda:
-- Editar el catálogo (productos, precios, disponibilidad, imágenes).
+Hoy **todo el contenido de la web está hardcodeado** en `index.html` y `web/blog/*.html` (productos, textos, precios de referencia, artículos). La meta es que alguien del equipo de Guache — no necesariamente un desarrollador — pueda:
+- Editar el catálogo (productos, precios, disponibilidad, imágenes) — el patrón `.media-slot` (§4.5) ya deja el hueco visual listo para que cargar una foto sea tan simple como insertar una `<img>`, sin tocar CSS.
 - Editar textos y secciones de la landing.
 - Publicar entradas de blog (§8.3).
 - Ver y gestionar cotizaciones/pedidos (reemplazando el actual `GET /api/cotizaciones` abierto por una vista protegida).
@@ -271,7 +284,7 @@ Requiere primero **autenticación y roles** (mínimo: rol administrador/secretar
 
 ### 8.3 Blog / centro de contenido
 
-Sección pensada para construir comunidad alrededor de la marca Guache: artículos de ayuda para productores, contenido de valor para clientes de detal (recetas, origen del producto, etc.). Requiere modelo de contenido (posts, autor, fecha, imagen) gestionable desde el panel de administración (§8.2).
+Sección pensada para construir comunidad alrededor de la marca Guache: artículos de ayuda para productores, contenido de valor para clientes de detal (recetas, origen del producto, etc.). **Existe una versión de ejemplo (agosto 2026)** en `web/blog/` — 4 artículos estáticos, uno por tipo de cliente de `EMPRESA.md` §8 (agricultores, productores pecuarios, distribuidores, consumidor final). Es contenido hardcodeado en HTML, sin modelo de datos ni autoría real — sirve como plantilla de tono/estructura, no como el sistema final. Requiere modelo de contenido (posts, autor, fecha, imagen) gestionable desde el panel de administración (§8.2) para dejar de ser estático.
 
 ### 8.4 Automatización de pedidos vía bot
 

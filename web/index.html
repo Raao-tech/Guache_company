@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agroindustria Guache | Planta Agroindustrial Acarigua</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="description" content="Guache, C.A. — más de 25 años cultivando, procesando y distribuyendo café, maíz, cacao, cebada y arroz. Alimento balanceado, servicios al agricultor y, muy pronto, venta al detal en España y Colombia.">
+    <link rel="stylesheet" href="/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -19,9 +20,15 @@
                 <span class="logo-icon">🌾</span>
                 <span class="logo-text">Agroguache <strong>C.A.</strong></span>
             </div>
-            <nav class="nav-links">
-                <a href="#productos">Productos</a>
+            <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="navLinks">
+                <span></span><span></span><span></span>
+            </button>
+            <nav class="nav-links" id="navLinks">
                 <a href="#servicios">Servicios</a>
+                <a href="#rubros">Rubros</a>
+                <a href="#productos">Mayorista</a>
+                <a href="#detal">Al Detal</a>
+                <a href="/blog/">Blog</a>
                 <a href="#cotizar" class="btn-primary-sm">Cotizar al Mayor</a>
             </nav>
         </div>
@@ -33,13 +40,17 @@
             <div class="hero-content">
                 <span class="badge">📍 Acarigua, Estado Portuguesa</span>
                 <h1>Procesamiento y Nutrición Agroindustrial de Calidad</h1>
-                <p>Procesamos y distribuimos harinas, cereales, aceites y alimentos balanceados para animales. Más de 25 años impulsando la soberanía alimentaria del país.</p>
+                <p>Cultivamos, procesamos y distribuimos café, maíz, cacao, cebada y arroz, además de alimento balanceado para el sector pecuario. Más de 25 años impulsando la soberanía alimentaria de Venezuela — y preparando el salto a España y Colombia.</p>
                 <div class="hero-actions">
                     <a href="#cotizar" class="btn-primary">Solicitar Cotización</a>
                     <button onclick="toggleChat()" class="btn-secondary">💬 Hablar con Guache</button>
                 </div>
             </div>
             <div class="hero-stats">
+                <div class="stat-card">
+                    <h3>+25 años</h3>
+                    <p>De trayectoria agroindustrial</p>
+                </div>
                 <div class="stat-card">
                     <h3>12.000 Ton</h3>
                     <p>Capacidad de procesamiento / mes</p>
@@ -48,16 +59,82 @@
                     <h3>40.000 Ton</h3>
                     <p>Almacenamiento en Silos</p>
                 </div>
+                <div class="stat-card">
+                    <h3>7 estados</h3>
+                    <p>Con presencia en Venezuela</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- PRODUCTOS -->
+    <!-- SERVICIOS PARA EL AGRICULTOR -->
+    <section id="servicios" class="section">
+        <div class="container">
+            <h2 class="section-title">Servicios para el Agricultor</h2>
+            <p class="section-subtitle">No solo compramos y vendemos: acompañamos todo el ciclo agropecuario de terceros productores.</p>
+
+            <div class="card-grid cols-3">
+                <div class="info-card">
+                    <div class="media-slot slot-sm" aria-hidden="true">📦</div>
+                    <h3>Almacenamiento de Granos</h3>
+                    <p>Silos propios con control de humedad y temperatura, para productores que no cuentan con capacidad de acopio.</p>
+                </div>
+                <div class="info-card">
+                    <div class="media-slot slot-sm tone-naranja" aria-hidden="true">🧑‍🌾</div>
+                    <h3>Asesoramiento Técnico</h3>
+                    <p>Desde selección de semilla hasta manejo poscosecha — acompañamiento en cultivo, tierra y cría.</p>
+                </div>
+                <div class="info-card">
+                    <div class="media-slot slot-sm tone-tierra" aria-hidden="true">🚜</div>
+                    <h3>Venta de Maquinaria Agrícola</h3>
+                    <p>Acceso a equipos para siembra, cosecha y manejo pecuario, pensado para el productor local.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RUBROS AGRÍCOLAS -->
+    <section id="rubros" class="section section-alt">
+        <div class="container">
+            <h2 class="section-title">Nuestros Rubros</h2>
+            <p class="section-subtitle">Cinco líneas agrícolas base, el núcleo de nuestra producción y procesamiento.</p>
+
+            <div class="card-grid">
+                <div class="info-card">
+                    <div class="media-slot slot-sm tone-tierra" aria-hidden="true">☕</div>
+                    <h3>Café</h3>
+                    <p>Cultivo y acopio orientado al mercado nacional y a futuras presentaciones de exportación al detal.</p>
+                </div>
+                <div class="info-card">
+                    <div class="media-slot slot-sm" aria-hidden="true">🌽</div>
+                    <h3>Maíz</h3>
+                    <p>Rubro histórico de la empresa; base de harinas, sémola y buena parte del alimento balanceado.</p>
+                </div>
+                <div class="info-card">
+                    <div class="media-slot slot-sm tone-tierra" aria-hidden="true">🍫</div>
+                    <h3>Cacao</h3>
+                    <p>Creciente relevancia para la expansión internacional, como producto insignia latinoamericano.</p>
+                </div>
+                <div class="info-card">
+                    <div class="media-slot slot-sm tone-naranja" aria-hidden="true">🌾</div>
+                    <h3>Cebada</h3>
+                    <p>Utilizada tanto en procesos agroindustriales como en la formulación de alimentos balanceados.</p>
+                </div>
+                <div class="info-card">
+                    <div class="media-slot slot-sm tone-verde-oscuro" aria-hidden="true">🍚</div>
+                    <h3>Arroz</h3>
+                    <p>Rubro de alto volumen, con procesamiento propio (pulido) y presencia consolidada en el mercado mayorista.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUCTOS / MAYORISTA -->
     <section id="productos" class="section">
         <div class="container">
             <h2 class="section-title">Catálogo de Productos al Mayor</h2>
             <p class="section-subtitle">Atendemos a distribuidores, industrias y cadenas de comercialización.</p>
-            
+
             <div class="product-grid">
                 <div class="product-card">
                     <span class="sku">SKU: HM-050</span>
@@ -70,6 +147,11 @@
                     <p>Fuerza y absorción ideal para panificación industrial. Presentación 45 KG.</p>
                 </div>
                 <div class="product-card">
+                    <span class="sku">SKU: AR-050</span>
+                    <h3>Arroz Pulido Tipo I</h3>
+                    <p>Procesamiento propio, presentaciones de 1 KG y 50 KG para el mercado mayorista.</p>
+                </div>
+                <div class="product-card">
                     <span class="sku">SKU: AE-040</span>
                     <h3>Alimento Aves Engorde</h3>
                     <p>Fórmula balanceada con alto valor proteico. Sacos de 40 KG.</p>
@@ -79,6 +161,96 @@
                     <h3>Concentrado Bovino</h3>
                     <p>Nutrición de alto rendimiento para ganado de leche y carne. Sacos de 40 KG.</p>
                 </div>
+                <div class="product-card">
+                    <span class="sku">SKU: AV-018</span>
+                    <h3>Aceite Vegetal Comestible</h3>
+                    <p>Aceite refinado, presentación industrial de 18 L para uso comercial.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ZONA AL DETAL (PREVIEW) -->
+    <section id="detal" class="section section-alt">
+        <div class="container">
+            <div class="detal-panel">
+                <div>
+                    <span class="detal-badge">🇪🇸 🇨🇴 Muy pronto en España y Colombia</span>
+                    <h2 class="section-title">Guache en tu Hogar</h2>
+                    <p>Estamos preparando presentaciones de consumo al detal — empaques individuales y familiares de café, cacao, arroz y harina de maíz, pensados para el hogar y con el sabor de la tradición agrícola venezolana. Todavía no hay tienda en línea activa, pero ya podés preguntarle a Guache por esta iniciativa.</p>
+                    <button onclick="preguntarSobreDetal()" class="btn-secondary" style="background:transparent;border-color:rgba(255,255,255,0.4);color:#fff;">💬 Preguntale a Guache</button>
+                </div>
+                <div>
+                    <div class="detal-categorias">
+                        <figure>
+                            <div class="media-slot slot-sm" aria-hidden="true">☕</div>
+                            <figcaption>Café</figcaption>
+                        </figure>
+                        <figure>
+                            <div class="media-slot slot-sm tone-tierra" aria-hidden="true">🍫</div>
+                            <figcaption>Cacao</figcaption>
+                        </figure>
+                        <figure>
+                            <div class="media-slot slot-sm tone-naranja" aria-hidden="true">🍚</div>
+                            <figcaption>Arroz</figcaption>
+                        </figure>
+                        <figure>
+                            <div class="media-slot slot-sm tone-verde-oscuro" aria-hidden="true">🌽</div>
+                            <figcaption>Harinas</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BLOG (TEASER) -->
+    <section id="blog" class="section">
+        <div class="container">
+            <h2 class="section-title">Del Campo a tu Mesa: Nuestro Blog</h2>
+            <p class="section-subtitle">Contenido para cada tipo de lector que forma parte del mundo Guache.</p>
+
+            <div class="blog-grid">
+                <a href="/blog/comenzar-en-agricultura.html" class="blog-card">
+                    <div class="media-slot tone-tierra" aria-hidden="true">🧑‍🌾</div>
+                    <div class="blog-card-body">
+                        <span class="audience-tag">Para agricultores</span>
+                        <h3>Primeros pasos para el pequeño agricultor</h3>
+                        <p>Cómo el almacenamiento, la asesoría técnica y la maquinaria pueden cambiar el resultado de tu cosecha.</p>
+                        <span class="read-more">Leer más →</span>
+                    </div>
+                </a>
+                <a href="/blog/alimento-balanceado-guia.html" class="blog-card">
+                    <div class="media-slot" aria-hidden="true">🐄</div>
+                    <div class="blog-card-body">
+                        <span class="audience-tag">Para productores pecuarios</span>
+                        <h3>Cómo elegir el alimento balanceado correcto</h3>
+                        <p>Bovino, avícola o truchicultura: qué considerar según tu etapa de producción.</p>
+                        <span class="read-more">Leer más →</span>
+                    </div>
+                </a>
+                <a href="/blog/elegir-proveedor-mayorista.html" class="blog-card">
+                    <div class="media-slot tone-naranja" aria-hidden="true">🚚</div>
+                    <div class="blog-card-body">
+                        <span class="audience-tag">Para distribuidores</span>
+                        <h3>5 cosas a evaluar en un proveedor mayorista</h3>
+                        <p>Consistencia, trazabilidad y logística: lo que debería ofrecerte tu proveedor de harinas y cereales.</p>
+                        <span class="read-more">Leer más →</span>
+                    </div>
+                </a>
+                <a href="/blog/recetas-harina-de-maiz.html" class="blog-card">
+                    <div class="media-slot tone-verde-oscuro" aria-hidden="true">🫓</div>
+                    <div class="blog-card-body">
+                        <span class="audience-tag">Para tu hogar</span>
+                        <h3>3 recetas tradicionales con harina de maíz</h3>
+                        <p>Un adelanto del sabor latinoamericano que Guache quiere llevar a más hogares.</p>
+                        <span class="read-more">Leer más →</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="section-footer-link">
+                <a href="/blog/" class="btn-secondary">Ver todos los artículos</a>
             </div>
         </div>
     </section>
@@ -138,6 +310,38 @@
         </div>
     </section>
 
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="footer-logo">🌾 Agroguache <strong>C.A.</strong></div>
+                    <p>Agroindustria venezolana con más de 25 años de trayectoria. Nacidos en Acarigua, estado Portuguesa, corazón del eje agrícola de Venezuela.</p>
+                    <div class="footer-states">
+                        <span>Portuguesa</span><span>Mérida</span><span>Barinas</span><span>Zulia</span><span>Lara</span><span>Guárico</span><span>Cojedes</span>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Navegación</h4>
+                    <a href="#servicios">Servicios</a>
+                    <a href="#rubros">Rubros</a>
+                    <a href="#productos">Catálogo al Mayor</a>
+                    <a href="#detal">Al Detal</a>
+                    <a href="/blog/">Blog</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Contacto</h4>
+                    <p>Zona Industrial, Acarigua, estado Portuguesa, Venezuela</p>
+                    <a href="mailto:ventas@agroguache.com.ve">ventas@agroguache.com.ve</a>
+                    <a href="#cotizar">Solicitar cotización al mayor →</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 Guache, C.A. (Guache Compañía Anónima). Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
+
     <!-- CHAT FLOTANTE: GUACHE EL ZORRO -->
     <div class="chat-widget">
         <button class="chat-trigger" onclick="toggleChat()" aria-label="Abrir chat">
@@ -159,6 +363,7 @@
             <div class="chat-suggestions">
                 <button class="chip" onclick="usarSugerencia('¿Cuáles son los SKUs de Alimento Animal?')">🌾 Alimentos Animales</button>
                 <button class="chip" onclick="usarSugerencia('¿Qué servicios de planta ofrecen en Acarigua?')">🏬 Servicios de Planta</button>
+                <button class="chip" onclick="usarSugerencia('¿Cuándo estará disponible la venta al detal en España?')">🛍️ Venta al Detal</button>
                 <button class="chip" onclick="usarSugerencia('¿Cuál es el horario de atención?')">🕒 Horarios</button>
             </div>
 
@@ -175,6 +380,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>

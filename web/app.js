@@ -11,6 +11,37 @@ function toggleChat() {
     }
 }
 
+// Abre el chat y pregunta directamente por la venta al detal
+function preguntarSobreDetal() {
+    const chatWindow = document.getElementById('chatWindow');
+    if (chatWindow.classList.contains('hidden')) {
+        toggleChat();
+    }
+    usarSugerencia('¿Cuándo estará disponible la venta al detal en España y Colombia?');
+}
+
+// MENÚ MÓVIL (hamburguesa)
+function inicializarMenuMovil() {
+    const toggle = document.getElementById('navToggle');
+    const links = document.getElementById('navLinks');
+    if (!toggle || !links) return;
+
+    toggle.addEventListener('click', () => {
+        const abierto = links.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', abierto);
+    });
+
+    // Cerrar el menú al navegar a una sección
+    links.querySelectorAll('a').forEach((enlace) => {
+        enlace.addEventListener('click', () => {
+            links.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', inicializarMenuMovil);
+
 // Desplazamiento automático al final de la conversación
 function scrollToBottom() {
     const messagesContainer = document.getElementById('chatMessages');
