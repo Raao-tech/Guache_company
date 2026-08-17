@@ -66,7 +66,8 @@ Project_0/
 │   ├── agroguache.service         # Unit de systemd para correr uvicorn
 │   ├── backup_db.py               # Backup seguro + rotación de cotizaciones.db
 │   ├── agroguache-backup.service  # Unit de systemd (oneshot) para el backup
-│   └── agroguache-backup.timer    # Timer de systemd: corre el backup a diario
+│   ├── agroguache-backup.timer    # Timer de systemd: corre el backup a diario
+│   └── migrate_sqlite_to_postgres.py  # Migración única de datos SQLite -> Postgres
 └── docs/
     ├── EMPRESA.md                # Perfil corporativo (negocio)
     └── PROYECTO_TECNICO.md       # Este documento
@@ -97,13 +98,13 @@ CORS restringido vía `ALLOWED_ORIGINS` en `.env` (lista separada por comas). Po
 
 ### 4.2 Base de datos — `src/database.py`
 
-SQLite vía SQLAlchemy, un único modelo:
+SQLAlchemy con un único modelo:
 
 - **`CotizacionDB`** — `id`, `folio` (único, ej. `COT-2026-A1B2C3D4`), `nombre_contacto`, `telefono`, `empresa` (opcional), `sku_producto`, `cantidad_toneladas`, `destino_despacho`, `observaciones` (opcional), `fecha_registro`.
 
-**Migraciones (Alembic):** el esquema ya no se crea con `create_all()` al arrancar — se gestiona con Alembic (`alembic/`, configurado en `alembic/env.py` para usar el mismo `Base`/URL que `src/database.py`, una única fuente de verdad). Cualquier cambio de columna/tabla debe ir acompañado de una migración nueva (`alembic revision -m "..."`, editar `upgrade()`/`downgrade()`).
+**Motor (SQLite / Postgres):** `SQLALCHEMY_DATABASE_URL` se toma de la variable de entorno `DATABASE_URL`; si no está definida, usa SQLite local (`sqlite:///./cotizaciones.db`) — así el desarrollo local no requiere tener Postgres instalado. En producción (VPS), `DATABASE_URL` apunta a Postgres (`postgresql+psycopg://...`, driver `psycopg` v3). Verificado a mano contra un Postgres real (esquema, inserts, autoincremento) — ver §8.6 para la migración de datos existentes.
 
-No hay sistema de migraciones (Alembic u otro): el esquema se crea con `create_all()` al arrancar, lo cual funciona para el MVP pero no es viable en cuanto haya que versionar cambios de esquema en producción con datos reales.
+**Migraciones (Alembic):** el esquema no se crea con `create_all()` al arrancar — se gestiona con Alembic (`alembic/`, configurado en `alembic/env.py` para usar el mismo `Base`/URL que `src/database.py`, una única fuente de verdad, funciona igual para SQLite y Postgres). Cualquier cambio de columna/tabla debe ir acompañado de una migración nueva (`alembic revision -m "..."`, editar `upgrade()`/`downgrade()`).
 
 ### 4.3 Bot de Telegram — `src/bots/telegram_bot.py`
 
@@ -179,7 +180,7 @@ sudo systemctl start agroguache.service
 |---|---|
 | Backend / API | Python 3.14, FastAPI, Uvicorn |
 | Validación de datos | Pydantic v2 |
-| Base de datos | SQLite + SQLAlchemy ORM, migraciones con Alembic |
+| Base de datos | SQLAlchemy ORM + Alembic. SQLite en desarrollo local; Postgres (driver `psycopg` v3) en producción vía `DATABASE_URL` |
 | Tests | pytest + `fastapi.testclient` |
 | Bot conversacional | python-telegram-bot |
 | LLM / IA | Groq API (`llama-3.1-8b-instant`) |
@@ -236,7 +237,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
 3. **Sin autenticación de usuarios/roles** — la protección del punto 1 es una clave de administrador compartida, no un sistema de usuarios. Sigue siendo un prerrequisito para el panel de administración (§8.2), que necesitará roles diferenciados (admin/secretaría vs. público).
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
-5. **SQLite en un solo archivo** — válido para el volumen actual (cotizaciones B2B), pero no escala bien a concurrencia alta ni a un catálogo de e-commerce con pedidos, usuarios e inventario. Migrar a PostgreSQL es un prerrequisito realista para la fase de detal.
+5. ~~SQLite en un solo archivo~~ — **Código resuelto (agosto 2026).** La app soporta Postgres vía `DATABASE_URL` (§4.2), probado a mano de punta a punta (esquema, inserts, autoincremento). **Falta el corte real en producción:** instalar Postgres en el VPS, correr `alembic upgrade head` contra la base nueva, migrar los datos existentes con `deploy/migrate_sqlite_to_postgres.py`, y actualizar `DATABASE_URL` en el `.env` del VPS (pasos en §8.6). Hasta que se haga ese corte, producción sigue en SQLite.
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
 8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
@@ -282,9 +283,36 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 
 ### 8.6 Infraestructura y escalabilidad
 
-- Evaluar migración de SQLite → PostgreSQL antes de lanzar e-commerce real.
+- ~~Evaluar migración de SQLite → PostgreSQL~~ — **Código listo (agosto 2026, §4.2/§7).** Falta ejecutar el corte en el VPS (instalado nativo en el mismo servidor, decisión tomada por costo). Pasos, en orden, corriendo como `root` en el VPS:
+
+  ```bash
+  # 1. Instalar Postgres
+  sudo apt update && sudo apt install -y postgresql
+
+  # 2. Crear base y usuario de la app
+  sudo -u postgres psql -c "CREATE DATABASE agroguache;"
+  sudo -u postgres psql -c "CREATE USER agroguache_user WITH PASSWORD 'elegir-una-clave-segura';"
+  sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE agroguache TO agroguache_user;"
+  sudo -u postgres psql -d agroguache -c "GRANT ALL ON SCHEMA public TO agroguache_user;"
+
+  # 3. Parar la app (para que no siga escribiendo en la SQLite vieja durante el corte)
+  sudo systemctl stop agroguache.service
+
+  # 4. En /var/www/agroguache, con el venv activado y el código ya actualizado (git pull):
+  export DATABASE_URL="postgresql+psycopg://agroguache_user:elegir-una-clave-segura@localhost:5432/agroguache"
+  alembic upgrade head                              # crea el esquema en Postgres
+  python deploy/migrate_sqlite_to_postgres.py        # copia los datos existentes
+
+  # 5. Agregar DATABASE_URL (la misma de arriba) al .env de producción, permanentemente
+
+  # 6. Levantar la app de nuevo — ya va a leer DATABASE_URL del .env
+  sudo systemctl start agroguache.service
+  ```
+
+  Después de confirmar que todo funciona (`GET /api/cotizaciones` con auth, devuelve las filas migradas), conservar `cotizaciones.db` un tiempo como respaldo antes de borrarlo — no lo borra ningún script automáticamente.
+
 - Ya existe CI (tests automáticos en GitHub Actions, §7). Falta el **CD**: automatizar el despliegue al VPS en lugar del proceso manual actual.
-- ~~Backups automáticos de base de datos~~ — **Resuelto parcialmente (agosto 2026).** Backup diario local al VPS con rotación (§4.6). Falta la copia off-site (otro servidor o almacenamiento en la nube) para estar protegidos ante la pérdida total del VPS.
+- ~~Backups automáticos de base de datos~~ — **Resuelto parcialmente (agosto 2026).** Backup diario local al VPS con rotación (§4.6). Diseñado para SQLite — al migrar a Postgres (arriba) hay que adaptar `backup_db.py` a `pg_dump` en vez del backup API de `sqlite3`. Sigue faltando la copia off-site.
 - Contenerización (Docker) para reducir fricción entre entornos de desarrollo/producción, si el equipo crece.
 
 ---

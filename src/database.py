@@ -1,15 +1,21 @@
 # src/database.py
+import os
+
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
-# Archivo local de SQLite donde se guardarán los datos
-SQLALCHEMY_DATABASE_URL = "sqlite:///./cotizaciones.db"
+# Postgres en producción (DATABASE_URL en .env), SQLite por defecto en desarrollo local
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cotizaciones.db")
 
-# Motor de la base de datos (check_same_thread=False es necesario en FastAPI con SQLite)
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+# check_same_thread=False solo aplica (y solo lo acepta) el driver de SQLite
+connect_args = (
+    {"check_same_thread": False}
+    if SQLALCHEMY_DATABASE_URL.startswith("sqlite")
+    else {}
 )
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 
 # Creador de sesiones para interactuar con la BD
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
