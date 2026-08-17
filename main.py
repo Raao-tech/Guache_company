@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from src import config
 from src.services.llm_service import generar_respuesta_llm
 from src.bots.telegram_bot import crear_aplicacion_bot
-from src.database import engine, Base, SessionLocal, CotizacionDB
+from src.database import SessionLocal, CotizacionDB
 
 # Configuración de logging
 logging.basicConfig(
@@ -32,11 +32,10 @@ telegram_app = crear_aplicacion_bot()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- PROCESOS AL INICIAR EL SERVIDOR ---
-    # 1. Crear las tablas de la base de datos si no existen
-    logger.info("🗄️ Inicializando base de datos SQLite...")
-    Base.metadata.create_all(bind=engine)
+    # El esquema de la base de datos se gestiona con Alembic
+    # (ejecutar `alembic upgrade head` antes de levantar el servidor).
 
-    # 2. Iniciar Bot de Telegram
+    # 1. Iniciar Bot de Telegram
     if telegram_app:
         logger.info("🦊 Iniciando el Zorro Guache en Telegram (segundo plano)...")
         await telegram_app.initialize()

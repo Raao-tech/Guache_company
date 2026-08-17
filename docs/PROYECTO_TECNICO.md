@@ -41,7 +41,11 @@ Project_0/
 ├── main.py                     # App FastAPI: endpoints, lifespan, montaje de estáticos
 ├── requirements.txt            # Dependencias de producción
 ├── .env / .env.example         # Variables de entorno (tokens, claves)
-├── cotizaciones.db             # Base de datos SQLite (generada en runtime)
+├── cotizaciones.db             # Base de datos SQLite (local, generada en runtime, NO versionada — ver §7)
+├── alembic.ini                 # Configuración de Alembic (migraciones de BD)
+├── alembic/
+│   ├── env.py                    # Usa el motor/modelo reales de src/database.py
+│   └── versions/                 # Migraciones (una por cambio de esquema)
 ├── src/
 │   ├── config.py                # Carga y valida variables de entorno
 │   ├── database.py              # Motor SQLAlchemy + modelo CotizacionDB
@@ -90,6 +94,8 @@ CORS restringido vía `ALLOWED_ORIGINS` en `.env` (lista separada por comas). Po
 SQLite vía SQLAlchemy, un único modelo:
 
 - **`CotizacionDB`** — `id`, `folio` (único, ej. `COT-2026-A1B2C3D4`), `nombre_contacto`, `telefono`, `empresa` (opcional), `sku_producto`, `cantidad_toneladas`, `destino_despacho`, `observaciones` (opcional), `fecha_registro`.
+
+**Migraciones (Alembic):** el esquema ya no se crea con `create_all()` al arrancar — se gestiona con Alembic (`alembic/`, configurado en `alembic/env.py` para usar el mismo `Base`/URL que `src/database.py`, una única fuente de verdad). Cualquier cambio de columna/tabla debe ir acompañado de una migración nueva (`alembic revision -m "..."`, editar `upgrade()`/`downgrade()`).
 
 No hay sistema de migraciones (Alembic u otro): el esquema se crea con `create_all()` al arrancar, lo cual funciona para el MVP pero no es viable en cuanto haya que versionar cambios de esquema en producción con datos reales.
 
@@ -163,7 +169,10 @@ pip install -r requirements.txt
 cp .env.example .env
 # Completar TELEGRAM_BOT_TOKEN, GROQ_API_KEY, ADMIN_USERNAME y ADMIN_PASSWORD en .env
 
-# 4. Levantar el servidor (web + API + bot de Telegram)
+# 4. Aplicar migraciones (crea/actualiza el esquema de cotizaciones.db)
+alembic upgrade head
+
+# 5. Levantar el servidor (web + API + bot de Telegram)
 uvicorn main:app --reload --port 8000
 ```
 
@@ -171,6 +180,7 @@ uvicorn main:app --reload --port 8000
 - Documentación interactiva de la API (Swagger, autogenerada por FastAPI) en `http://localhost:8000/docs`.
 - Si no se configura `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`, `ADMIN_USERNAME` o `ADMIN_PASSWORD`, la app **falla al arrancar** (`src/config.py` lanza `ValueError`) — las cuatro son obligatorias hoy, no opcionales.
 - `GET /api/cotizaciones` pide usuario/clave (HTTP Basic Auth) — usa las credenciales `ADMIN_USERNAME` / `ADMIN_PASSWORD` definidas en `.env`.
+- **Si ya tenías una `cotizaciones.db` creada antes de que existieran las migraciones** (con las tablas ya presentes), no corras `alembic upgrade head` sobre ella directamente — fallaría porque la tabla ya existe. En su lugar, corré `alembic stamp head` una única vez para decirle a Alembic "esta base ya está al día", sin tocar los datos. Esto aplica en particular al **VPS de producción** al desplegar este cambio por primera vez.
 
 ---
 
@@ -181,7 +191,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. **Pendiente:** definir el/los dominio(s) reales de producción en el `.env` del VPS (hoy solo tiene el default de desarrollo).
 3. **Sin autenticación de usuarios/roles** — la protección del punto 1 es una clave de administrador compartida, no un sistema de usuarios. Sigue siendo un prerrequisito para el panel de administración (§8.2), que necesitará roles diferenciados (admin/secretaría vs. público).
-4. **Sin migraciones de base de datos** — el esquema se crea con `create_all()`. Cualquier cambio de columna en producción hoy requeriría intervención manual.
+4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. **SQLite en un solo archivo** — válido para el volumen actual (cotizaciones B2B), pero no escala bien a concurrencia alta ni a un catálogo de e-commerce con pedidos, usuarios e inventario. Migrar a PostgreSQL es un prerrequisito realista para la fase de detal.
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
