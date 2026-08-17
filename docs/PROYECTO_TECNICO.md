@@ -140,7 +140,7 @@ No hay build tool (Webpack/Vite), no hay componentes, no hay gestor de paquetes 
 
 **Producción:** el sitio corre en un VPS (antes accesible solo por IP `93.189.88.76`) y desde agosto 2026 responde en **https://guache.online** (y `www.guache.online`), con certificado TLS de Let's Encrypt vía Certbot (autorenovación configurada, vence 2026-11-12).
 
-> ⚠️ **Nota:** Certbot modifica la config de Nginx directamente en el servidor (agrega los bloques HTTPS y las rutas del certificado). El archivo `deploy/agroguache.nginx` de este repo todavía refleja la versión previa (solo HTTP + IP) — hay que sincronizarlo con el archivo real del VPS (`/etc/nginx/sites-enabled/agroguache`) para que el repo deje de estar desactualizado respecto a producción.
+> ⚠️ **Nota:** Certbot modifica la config de Nginx directamente en el servidor (agregó los bloques HTTPS y las rutas del certificado). `deploy/agroguache.nginx` ya está sincronizado (agosto 2026) con el archivo real del VPS (`/etc/nginx/sites-enabled/agroguache`) — si Certbot vuelve a tocarlo (ej. al renovar o agregar un subdominio), hay que repetir la sincronización a mano, ya que Certbot no versiona sus cambios.
 
 Hay CI (tests automáticos, §7), pero no CD: el despliegue al VPS sigue siendo manual, sin contenedor Docker.
 
