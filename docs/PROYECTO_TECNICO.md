@@ -119,7 +119,7 @@ El bot comparte lógica y prompt con el chat de la web — hoy es, en esencia, e
 
 ### 4.4 Servicio LLM — `src/services/llm_service.py`
 
-Usa el cliente oficial de **Groq** (`AsyncGroq`), modelo `llama-3.1-8b-instant`. El prompt de sistema (`SYSTEM_PROMPT`) define:
+Usa el cliente oficial de **Groq** (`AsyncGroq`), modelo `openai/gpt-oss-20b`. El prompt de sistema (`SYSTEM_PROMPT`) define:
 
 - Identidad del asistente: "Guache", asistente comercial de Agroindustria Guache C.A. (fundada 1998, Acarigua, Portuguesa).
 - Datos operativos de planta (capacidad, horarios, contacto).
@@ -127,6 +127,8 @@ Usa el cliente oficial de **Groq** (`AsyncGroq`), modelo `llama-3.1-8b-instant`.
 - Reglas de tono y de manejo de precios (siempre remitir a cotización, nunca dar precio fijo).
 
 > ⚠️ **Nota para quien continúe el proyecto:** este `SYSTEM_PROMPT` describe el catálogo B2B/mayorista actual (harinas, alimento balanceado a granel). Es contenido **hardcodeado en el código**, no editable sin un despliegue. A medida que avance la estrategia de detal (España/Colombia) y el panel de administración (§6.2), este prompt debería poder actualizarse sin tocar código — hoy es una limitación conocida, no un diseño final.
+
+> ⚠️ **Riesgo conocido — modelos de Groq cambian con el tiempo:** el 17 de agosto de 2026 el bot dejó de responder porque Groq dio de baja `llama-3.1-8b-instant` (el modelo usado hasta ese momento) — devolvía `404 model_not_found`. Se reemplazó por `openai/gpt-oss-20b` tras probarlo contra el `SYSTEM_PROMPT` real (formato, regla de "nunca dar precio fijo", velocidad ~1s). El nombre del modelo está hardcodeado en `llm_service.py`; si el bot vuelve a devolver el mensaje genérico de error ("hay una revolución de manadas Guache..."), lo primero a revisar es si Groq deprecó el modelo actual — `client.models.list()` del SDK de Groq devuelve los modelos vigentes en la cuenta.
 
 ### 4.5 Frontend web — `web/`
 
@@ -196,7 +198,7 @@ sudo systemctl start agroguache.service
 | Base de datos | SQLAlchemy ORM + Alembic. SQLite en desarrollo local; Postgres (driver `psycopg` v3) en producción vía `DATABASE_URL` |
 | Tests | pytest + `fastapi.testclient` |
 | Bot conversacional | python-telegram-bot |
-| LLM / IA | Groq API (`llama-3.1-8b-instant`) |
+| LLM / IA | Groq API (`openai/gpt-oss-20b`) |
 | Frontend | HTML5 + CSS3 + JavaScript vanilla (sin framework) |
 | Servidor web / proxy | Nginx |
 | Gestión de proceso | systemd |

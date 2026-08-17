@@ -59,11 +59,11 @@ REGLAS DE RESPUESTA:
 
 async def generar_respuesta_llm(prompt_usuario: str) -> str:
     """
-    Envía el mensaje del usuario a Gemini y devuelve el texto generado.
+    Envía el mensaje del usuario a Groq y devuelve el texto generado.
     """
     try:
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {
                     "role": "system",
