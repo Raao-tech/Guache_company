@@ -1,0 +1,8 @@
+[Unit]
+Description=Backup de la base de datos de Agroindustria Guache
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/www/agroguache
+ExecStart=/var/www/agroguache/venv/bin/python /var/www/agroguache/deploy/backup_db.py

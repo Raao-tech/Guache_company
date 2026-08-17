@@ -62,8 +62,11 @@ Project_0/
 │   ├── styles.css               # Estilos
 │   └── assets/                  # (vacío por ahora)
 ├── deploy/
-│   ├── agroguache.nginx         # Config de Nginx para el VPS de producción
-│   └── agroguache.service       # Unit de systemd para correr uvicorn
+│   ├── agroguache.nginx           # Config de Nginx para el VPS de producción
+│   ├── agroguache.service         # Unit de systemd para correr uvicorn
+│   ├── backup_db.py               # Backup seguro + rotación de cotizaciones.db
+│   ├── agroguache-backup.service  # Unit de systemd (oneshot) para el backup
+│   └── agroguache-backup.timer    # Timer de systemd: corre el backup a diario
 └── docs/
     ├── EMPRESA.md                # Perfil corporativo (negocio)
     └── PROYECTO_TECNICO.md       # Este documento
@@ -137,12 +140,36 @@ No hay build tool (Webpack/Vite), no hay componentes, no hay gestor de paquetes 
 
 - **`agroguache.service`** — unit de systemd que corre `uvicorn main:app` con 2 workers, como usuario `root`, en un VPS.
 - **`agroguache.nginx`** — Nginx sirve `styles.css` y `app.js` directamente como estáticos (por performance) y hace proxy del resto del tráfico a FastAPI en `127.0.0.1:8000`.
+- **`backup_db.py` + `agroguache-backup.service` + `agroguache-backup.timer`** — backup diario de `cotizaciones.db` (ver más abajo).
 
 **Producción:** el sitio corre en un VPS (antes accesible solo por IP `93.189.88.76`) y desde agosto 2026 responde en **https://guache.online** (y `www.guache.online`), con certificado TLS de Let's Encrypt vía Certbot (autorenovación configurada, vence 2026-11-12).
 
 > ⚠️ **Nota:** Certbot modifica la config de Nginx directamente en el servidor (agregó los bloques HTTPS y las rutas del certificado). `deploy/agroguache.nginx` ya está sincronizado (agosto 2026) con el archivo real del VPS (`/etc/nginx/sites-enabled/agroguache`) — si Certbot vuelve a tocarlo (ej. al renovar o agregar un subdominio), hay que repetir la sincronización a mano, ya que Certbot no versiona sus cambios.
 
 Hay CI (tests automáticos, §7), pero no CD: el despliegue al VPS sigue siendo manual, sin contenedor Docker.
+
+**Backups:** `deploy/backup_db.py` hace un respaldo seguro de `cotizaciones.db` (usa el API de backup online de `sqlite3`, no una copia cruda — no corrompe el archivo aunque la app esté escribiendo) y guarda el resultado en `/var/backups/agroguache/`, con rotación automática (borra respaldos de más de 14 días). Corre una vez al día vía un timer de systemd. Es un backup **local al VPS** — protege contra una migración/deploy que rompa datos, pero no contra la pérdida total del servidor; si en el futuro se necesita eso, hay que sumar una copia off-site (ver §8.6).
+
+Setup en el VPS (una sola vez):
+```bash
+sudo cp deploy/agroguache-backup.service deploy/agroguache-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now agroguache-backup.timer
+```
+
+Verificar que quedó agendado y correr uno manual para probar:
+```bash
+systemctl list-timers agroguache-backup.timer
+sudo systemctl start agroguache-backup.service   # corre un backup ya mismo, para probar
+ls -la /var/backups/agroguache/
+```
+
+Restaurar un backup (con el servicio parado, para no escribir mientras se restaura):
+```bash
+sudo systemctl stop agroguache.service
+sudo cp /var/backups/agroguache/cotizaciones_<fecha>.db /var/www/agroguache/cotizaciones.db
+sudo systemctl start agroguache.service
+```
 
 ---
 
@@ -257,7 +284,7 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 
 - Evaluar migración de SQLite → PostgreSQL antes de lanzar e-commerce real.
 - Ya existe CI (tests automáticos en GitHub Actions, §7). Falta el **CD**: automatizar el despliegue al VPS en lugar del proceso manual actual.
-- Backups automáticos de base de datos (hoy no existen).
+- ~~Backups automáticos de base de datos~~ — **Resuelto parcialmente (agosto 2026).** Backup diario local al VPS con rotación (§4.6). Falta la copia off-site (otro servidor o almacenamiento en la nube) para estar protegidos ante la pérdida total del VPS.
 - Contenerización (Docker) para reducir fricción entre entornos de desarrollo/producción, si el equipo crece.
 
 ---
