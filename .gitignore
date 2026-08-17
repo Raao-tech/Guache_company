@@ -6,6 +6,10 @@ __pycache__/
 # Variables de Entorno y Credenciales (¡SÚPER IMPORTANTES!)
 .env
 
+# Base de datos local (contiene datos reales de clientes, nunca debe versionarse)
+*.db
+*.db-journal
+
 # Archivos del Sistema
 .DS_Store
 Thumbs.db
