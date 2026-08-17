@@ -1,4 +1,5 @@
 import uuid
+import secrets
 import logging
 from datetime import datetime
 from typing import Optional
@@ -7,10 +8,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 # Importaciones internas
+from src import config
 from src.services.llm_service import generar_respuesta_llm
 from src.bots.telegram_bot import crear_aplicacion_bot
 from src.database import engine, Base, SessionLocal, CotizacionDB
@@ -58,7 +61,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,6 +76,26 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# ------------------------------------------------------------------
+# DEPENDENCIA DE AUTENTICACIÓN (ADMINISTRACIÓN)
+# ------------------------------------------------------------------
+security = HTTPBasic()
+
+def verificar_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Protege endpoints administrativos con HTTP Basic Auth mientras el proyecto
+    no cuenta con un sistema de usuarios/roles (ver §7-8.2 del documento técnico).
+    """
+    usuario_ok = secrets.compare_digest(credentials.username, config.ADMIN_USERNAME)
+    clave_ok = secrets.compare_digest(credentials.password, config.ADMIN_PASSWORD)
+    if not (usuario_ok and clave_ok):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales de administrador inválidas.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 # ------------------------------------------------------------------
 # MODELOS PYDANTIC
@@ -155,10 +178,11 @@ async def registrar_cotizacion(payload: CotizacionRequest, db: Session = Depends
         raise HTTPException(status_code=500, detail="Error interno al registrar la cotización.")
 
 @app.get("/api/cotizaciones", response_model=list[CotizacionDetalle], tags=["Administración"])
-async def listar_cotizaciones(db: Session = Depends(get_db)):
+async def listar_cotizaciones(db: Session = Depends(get_db), _admin: str = Depends(verificar_admin)):
     """
-    Devuelve el historial completo de cotizaciones registradas, 
+    Devuelve el historial completo de cotizaciones registradas,
     ordenadas desde la más reciente a la más antigua.
+    Protegido con HTTP Basic Auth (ADMIN_USERNAME / ADMIN_PASSWORD).
     """
     try:
         # Consultamos todas las cotizaciones ordenadas por fecha descendente

@@ -79,11 +79,11 @@ App FastAPI (`Agroindustria Guache API`) con un `lifespan` que:
 |---|---|---|---|
 | `GET` | `/api/health` | Health check simple. | No |
 | `POST` | `/api/cotizar` | Registra una cotización (nombre, teléfono, empresa, SKU, cantidad en toneladas, destino, observaciones) en SQLite y devuelve un folio único. | No |
-| `GET` | `/api/cotizaciones` | Devuelve el listado completo de cotizaciones registradas. | **No — ver §7** |
+| `GET` | `/api/cotizaciones` | Devuelve el listado completo de cotizaciones registradas. | **Sí — HTTP Basic Auth** (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) |
 | `POST` | `/api/chat` | Envía un mensaje al asistente "Guache" y devuelve la respuesta generada por el LLM. | No |
 | `/` (estático) | Sirve `web/` como sitio estático (SPA de una sola página). | — |
 
-CORS está configurado como `allow_origins=["*"]` (abierto a cualquier origen).
+CORS restringido vía `ALLOWED_ORIGINS` en `.env` (lista separada por comas). Por defecto solo permite `localhost`/`127.0.0.1:8000` para desarrollo — en producción debe definirse con el dominio real del sitio.
 
 ### 4.2 Base de datos — `src/database.py`
 
@@ -161,7 +161,7 @@ pip install -r requirements.txt
 
 # 3. Configurar variables de entorno
 cp .env.example .env
-# Completar TELEGRAM_BOT_TOKEN y GROQ_API_KEY en .env
+# Completar TELEGRAM_BOT_TOKEN, GROQ_API_KEY, ADMIN_USERNAME y ADMIN_PASSWORD en .env
 
 # 4. Levantar el servidor (web + API + bot de Telegram)
 uvicorn main:app --reload --port 8000
@@ -169,7 +169,8 @@ uvicorn main:app --reload --port 8000
 
 - La web queda disponible en `http://localhost:8000`.
 - Documentación interactiva de la API (Swagger, autogenerada por FastAPI) en `http://localhost:8000/docs`.
-- Si no se configura `TELEGRAM_BOT_TOKEN` o `GROQ_API_KEY`, la app **falla al arrancar** (`src/config.py` lanza `ValueError`) — ambas claves son obligatorias hoy, no opcionales.
+- Si no se configura `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`, `ADMIN_USERNAME` o `ADMIN_PASSWORD`, la app **falla al arrancar** (`src/config.py` lanza `ValueError`) — las cuatro son obligatorias hoy, no opcionales.
+- `GET /api/cotizaciones` pide usuario/clave (HTTP Basic Auth) — usa las credenciales `ADMIN_USERNAME` / `ADMIN_PASSWORD` definidas en `.env`.
 
 ---
 
@@ -177,12 +178,12 @@ uvicorn main:app --reload --port 8000
 
 Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de construir features nuevas encima**:
 
-1. **`GET /api/cotizaciones` está sin autenticación ni autorización.** Expone públicamente nombre, teléfono y datos comerciales de todos los clientes que hayan cotizado. Es el hallazgo de mayor prioridad a resolver — debe protegerse (auth de administrador) antes de que el volumen de datos reales crezca o antes de exponer el proyecto a más colaboradores externos.
-2. **CORS abierto (`allow_origins=["*"]`)** en toda la API, incluyendo endpoints de escritura.
-3. **Sin autenticación en ningún endpoint** — no hay usuarios, sesiones, ni roles todavía. Es un prerrequisito directo para el panel de administración (§8.2).
+1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
+2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. **Pendiente:** definir el/los dominio(s) reales de producción en el `.env` del VPS (hoy solo tiene el default de desarrollo).
+3. **Sin autenticación de usuarios/roles** — la protección del punto 1 es una clave de administrador compartida, no un sistema de usuarios. Sigue siendo un prerrequisito para el panel de administración (§8.2), que necesitará roles diferenciados (admin/secretaría vs. público).
 4. **Sin migraciones de base de datos** — el esquema se crea con `create_all()`. Cualquier cambio de columna en producción hoy requeriría intervención manual.
 5. **SQLite en un solo archivo** — válido para el volumen actual (cotizaciones B2B), pero no escala bien a concurrencia alta ni a un catálogo de e-commerce con pedidos, usuarios e inventario. Migrar a PostgreSQL es un prerrequisito realista para la fase de detal.
-6. **Dependencia sin usar:** `requirements.txt` incluye `google-genai` y `google-auth`, pero el servicio LLM implementado usa **Groq**, no Gemini. Limpiar o decidir si se usará Gemini como alternativa/fallback.
+6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
 8. **Sin tests automatizados** (unitarios ni de integración).
 9. **Sin CI/CD** — el despliegue al VPS es manual.
