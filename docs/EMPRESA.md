@@ -31,7 +31,7 @@ Producir, procesar y distribuir alimentos y soluciones agropecuarias de calidad 
 
 ## 4. Visión
 
-Ser reconocidos, para el año 2027, como el proveedor principal de alimentos latinoamericanos para el hogar en España, y como una agroindustria de referencia en Latinoamérica, integrando el campo, la industria y la tecnología al servicio del productor y del consumidor final.
+Ser reconocidos, para el año 2030, como el proveedor principal de alimentos latinoamericanos para el hogar en España, y como una agroindustria de referencia en Latinoamérica, integrando el campo, la industria y la tecnología al servicio del productor y del consumidor final.
 
 ## 5. Valores
 
