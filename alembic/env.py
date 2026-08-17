@@ -1,9 +1,17 @@
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+
+# Cargar .env explícitamente: a diferencia de la app real (arrancada
+# por systemd con EnvironmentFile=.env, o por src/config.py que ya
+# llama a load_dotenv()), alembic corre como CLI suelto y nada más
+# carga el .env — sin esto, DATABASE_URL nunca llega y cae en el
+# default de SQLite silenciosamente.
+load_dotenv()
 
 # Modelo y URL de conexión reales de la app (única fuente de verdad,
 # en vez de duplicar la URL en alembic.ini)
