@@ -1,9 +1,17 @@
 # src/database.py
 import os
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
+
+# Carga .env acá también (no solo en src/config.py): cualquier script
+# suelto que importe src.database directamente (alembic/env.py,
+# deploy/seed_blog.py, etc.) sin pasar por config.py necesita esto para
+# leer DATABASE_URL — si no, cae siempre al default de SQLite en
+# silencio. Ya nos pasó dos veces (alembic y seed_blog.py).
+load_dotenv()
 
 # Postgres en producción (DATABASE_URL en .env), SQLite por defecto en desarrollo local
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cotizaciones.db")
