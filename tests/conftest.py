@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 import main
 from src import config
-from src.database import Base
+from src.database import Base, get_db
 
 
 @pytest.fixture()
@@ -30,7 +30,7 @@ def client(tmp_path, monkeypatch):
         finally:
             db.close()
 
-    main.app.dependency_overrides[main.get_db] = override_get_db
+    main.app.dependency_overrides[get_db] = override_get_db
     with TestClient(main.app) as test_client:
         yield test_client
     main.app.dependency_overrides.clear()

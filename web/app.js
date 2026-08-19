@@ -42,6 +42,81 @@ function inicializarMenuMovil() {
 
 document.addEventListener('DOMContentLoaded', inicializarMenuMovil);
 
+// Escapa texto antes de insertarlo en innerHTML (nombres/descripciones vienen de la BD)
+function escaparHtmlPublico(texto) {
+    const div = document.createElement('div');
+    div.textContent = texto ?? '';
+    return div.innerHTML;
+}
+
+// CATÁLOGO "AL DETAL" -> GET /api/detal/productos
+// Si no hay productos cargados todavía, se deja el preview estático que ya
+// trae el HTML (las 4 categorías con "muy pronto").
+async function cargarCatalogoDetal() {
+    const contenedor = document.getElementById('detalContenido');
+    if (!contenedor) return;
+
+    try {
+        const respuesta = await fetch('/api/detal/productos');
+        const productos = await respuesta.json();
+        if (!Array.isArray(productos) || productos.length === 0) return;
+
+        contenedor.innerHTML = `
+            <div class="producto-grid">
+                ${productos.map((p) => `
+                    <div class="producto-card">
+                        <div class="media-slot" aria-hidden="true">
+                            ${p.imagen_url ? `<img src="${p.imagen_url}" alt="${escaparHtmlPublico(p.nombre)}">` : '🛍️'}
+                        </div>
+                        <div class="producto-card-body">
+                            <h3>${escaparHtmlPublico(p.nombre)}</h3>
+                            <p>${escaparHtmlPublico(p.descripcion)}</p>
+                            ${p.precio ? `<span class="producto-precio">${p.precio} ${escaparHtmlPublico(p.moneda || '')}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        // Si falla la carga, queda el preview estático — la sección no se rompe.
+    }
+}
+
+// BLOG (VISTA PREVIA EN EL HOME) -> GET /api/blog/posts
+async function cargarBlogTeaser() {
+    const contenedor = document.getElementById('blogTeaserGrid');
+    if (!contenedor) return;
+
+    try {
+        const respuesta = await fetch('/api/blog/posts');
+        const posts = await respuesta.json();
+
+        if (!Array.isArray(posts) || posts.length === 0) {
+            contenedor.innerHTML = '<p class="empty-state">Todavía no hay artículos publicados.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = posts.slice(0, 4).map((p) => `
+            <a href="/blog/${p.slug}" class="blog-card">
+                <div class="media-slot tone-tierra" aria-hidden="true">
+                    ${p.imagen_url ? `<img src="${p.imagen_url}" alt="${escaparHtmlPublico(p.titulo)}">` : '📰'}
+                </div>
+                <div class="blog-card-body">
+                    ${p.audiencia ? `<span class="audience-tag">${escaparHtmlPublico(p.audiencia)}</span>` : ''}
+                    <h3>${escaparHtmlPublico(p.titulo)}</h3>
+                    <p>${escaparHtmlPublico(p.resumen)}</p>
+                    <span class="read-more">Leer más →</span>
+                </div>
+            </a>
+        `).join('');
+    } catch (error) {
+        contenedor.innerHTML = '<p class="empty-state">No se pudieron cargar los artículos.</p>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', cargarCatalogoDetal);
+document.addEventListener('DOMContentLoaded', cargarBlogTeaser);
+
 // Desplazamiento automático al final de la conversación
 function scrollToBottom() {
     const messagesContainer = document.getElementById('chatMessages');

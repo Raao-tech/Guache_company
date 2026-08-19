@@ -38,47 +38,8 @@
             <h2 class="section-title">Del Campo a tu Mesa: Nuestro Blog</h2>
             <p class="section-subtitle">Un artículo para cada persona que forma parte del mundo Guache: agricultores, productores pecuarios, distribuidores y hogares.</p>
 
-            <div class="blog-grid">
-                <a href="/blog/comenzar-en-agricultura.html" class="blog-card">
-                    <div class="media-slot tone-tierra" aria-hidden="true">🧑‍🌾</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para agricultores</span>
-                        <h3>Primeros pasos para el pequeño agricultor</h3>
-                        <p>Cómo el almacenamiento, la asesoría técnica y la maquinaria pueden cambiar el resultado de tu cosecha.</p>
-                        <span class="blog-meta"><span>6 min de lectura</span></span>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
-                <a href="/blog/alimento-balanceado-guia.html" class="blog-card">
-                    <div class="media-slot" aria-hidden="true">🐄</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para productores pecuarios</span>
-                        <h3>Cómo elegir el alimento balanceado correcto</h3>
-                        <p>Bovino, avícola o truchicultura: qué considerar según tu etapa de producción.</p>
-                        <span class="blog-meta"><span>5 min de lectura</span></span>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
-                <a href="/blog/elegir-proveedor-mayorista.html" class="blog-card">
-                    <div class="media-slot tone-naranja" aria-hidden="true">🚚</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para distribuidores</span>
-                        <h3>5 cosas a evaluar en un proveedor mayorista</h3>
-                        <p>Consistencia, trazabilidad y logística: lo que debería ofrecerte tu proveedor de harinas y cereales.</p>
-                        <span class="blog-meta"><span>5 min de lectura</span></span>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
-                <a href="/blog/recetas-harina-de-maiz.html" class="blog-card">
-                    <div class="media-slot tone-verde-oscuro" aria-hidden="true">🫓</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para tu hogar</span>
-                        <h3>3 recetas tradicionales con harina de maíz</h3>
-                        <p>Un adelanto del sabor latinoamericano que Guache quiere llevar a más hogares en España y Colombia.</p>
-                        <span class="blog-meta"><span>4 min de lectura</span></span>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
+            <div class="blog-grid" id="blogListaCompleta">
+                <p class="empty-state">Cargando artículos...</p>
             </div>
         </div>
     </section>
@@ -148,5 +109,40 @@
     </div>
 
     <script src="/app.js"></script>
+    <script>
+        function estimarMinutosLectura(texto) {
+            const palabras = (texto || "").trim().split(/\s+/).filter(Boolean).length;
+            return Math.max(1, Math.round(palabras / 200));
+        }
+
+        (async () => {
+            const contenedor = document.getElementById("blogListaCompleta");
+            try {
+                const posts = await (await fetch("/api/blog/posts")).json();
+
+                if (!Array.isArray(posts) || posts.length === 0) {
+                    contenedor.innerHTML = '<p class="empty-state">Todavía no hay artículos publicados.</p>';
+                    return;
+                }
+
+                contenedor.innerHTML = posts.map((p) => `
+                    <a href="/blog/${p.slug}" class="blog-card">
+                        <div class="media-slot tone-tierra" aria-hidden="true">
+                            ${p.imagen_url ? `<img src="${p.imagen_url}" alt="${escaparHtmlPublico(p.titulo)}">` : "📰"}
+                        </div>
+                        <div class="blog-card-body">
+                            ${p.audiencia ? `<span class="audience-tag">${escaparHtmlPublico(p.audiencia)}</span>` : ""}
+                            <h3>${escaparHtmlPublico(p.titulo)}</h3>
+                            <p>${escaparHtmlPublico(p.resumen)}</p>
+                            <span class="blog-meta"><span>${estimarMinutosLectura(p.contenido)} min de lectura</span></span>
+                            <span class="read-more">Leer más →</span>
+                        </div>
+                    </a>
+                `).join("");
+            } catch (error) {
+                contenedor.innerHTML = '<p class="empty-state">No se pudieron cargar los artículos.</p>';
+            }
+        })();
+    </script>
 </body>
 </html>

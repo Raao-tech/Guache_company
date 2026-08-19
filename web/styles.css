@@ -652,6 +652,52 @@ body {
     color: rgba(255,255,255,0.85);
 }
 
+/* Grilla de productos reales, administrados desde el panel */
+.producto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+.producto-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.producto-card .media-slot {
+    aspect-ratio: 4 / 3;
+    border-radius: 0;
+}
+
+.producto-card-body {
+    padding: 1rem;
+}
+
+.producto-card-body h3 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    color: var(--white);
+    margin-bottom: 0.3rem;
+}
+
+.producto-card-body p {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 0.6rem;
+}
+
+.producto-precio {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 50px;
+}
+
 /* ===================================================
    11. BLOG
    =================================================== */

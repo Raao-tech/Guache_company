@@ -14,6 +14,7 @@ git merge --ff-only origin/main
 
 venv/bin/pip install --quiet -r requirements.txt
 venv/bin/alembic upgrade head
+venv/bin/python deploy/seed_blog.py  # idempotente: no duplica si ya corrió antes
 
 systemctl restart agroguache.service
 sleep 3

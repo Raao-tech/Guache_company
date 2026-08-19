@@ -16,3 +16,7 @@ Thumbs.db
 
 # Tests
 .pytest_cache/
+
+# Imágenes subidas desde el panel de administración (contenido generado en
+# runtime, distinto por entorno — no se versiona, igual que cotizaciones.db)
+web/uploads/

@@ -25,6 +25,7 @@ jobs:
           GROQ_API_KEY=test-key
           ADMIN_USERNAME=admin
           ADMIN_PASSWORD=test-password
+          SESSION_SECRET_KEY=test-session-secret-key-not-for-production
           EOF
 
       - name: Correr tests

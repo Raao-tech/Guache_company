@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de administración | Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/" class="active">Inicio</a>
+            <a href="/admin/productos.html">Catálogo Al Detal</a>
+            <a href="/admin/blog.html">Blog</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main">
+        <h1>Bienvenido/a</h1>
+        <p class="admin-subtitle">Desde acá podés actualizar lo que se muestra en la página, sin tocar código.</p>
+
+        <div class="card-grid cols-3">
+            <a href="/admin/productos.html" class="info-card" style="text-decoration:none;color:inherit;">
+                <h3>🛍️ Catálogo Al Detal</h3>
+                <p id="resumenProductos">Cargando...</p>
+            </a>
+            <a href="/admin/blog.html" class="info-card" style="text-decoration:none;color:inherit;">
+                <h3>📝 Blog</h3>
+                <p id="resumenBlog">Cargando...</p>
+            </a>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        (async () => {
+            await requerirSesion();
+
+            try {
+                const productos = await (await apiFetch("/api/admin/productos")).json();
+                const activos = productos.filter((p) => p.activo).length;
+                document.getElementById("resumenProductos").innerText =
+                    `${productos.length} producto(s) — ${activos} visible(s) en la web`;
+            } catch (e) {
+                document.getElementById("resumenProductos").innerText = "No se pudo cargar.";
+            }
+
+            try {
+                const posts = await (await apiFetch("/api/admin/blog")).json();
+                const publicados = posts.filter((p) => p.publicado).length;
+                document.getElementById("resumenBlog").innerText =
+                    `${posts.length} artículo(s) — ${publicados} publicado(s)`;
+            } catch (e) {
+                document.getElementById("resumenBlog").innerText = "No se pudo cargar.";
+            }
+        })();
+    </script>
+</body>
+</html>

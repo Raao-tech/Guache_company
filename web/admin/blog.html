@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog | Panel Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/">Inicio</a>
+            <a href="/admin/productos.html">Catálogo Al Detal</a>
+            <a href="/admin/blog.html" class="active">Blog</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main">
+        <h1>Blog</h1>
+        <p class="admin-subtitle">Los artículos publicados aparecen en <code>/blog/</code>. Los que dejes como borrador quedan guardados, pero no se ven públicamente todavía.</p>
+
+        <div class="admin-grid">
+            <div class="admin-panel">
+                <h2>Artículos</h2>
+                <div class="admin-list" id="listaPosts">
+                    <p class="empty-state">Cargando...</p>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2 id="tituloFormulario">Nuevo artículo</h2>
+                <form id="formPost">
+                    <input type="hidden" id="postId">
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="titulo">Título *</label>
+                        <input type="text" id="titulo" required placeholder="Ej. Cómo empezar en la agricultura">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="resumen">Resumen corto *</label>
+                        <textarea id="resumen" rows="2" required placeholder="Aparece en la tarjeta de vista previa del blog..."></textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="contenido">Contenido *</label>
+                        <textarea id="contenido" rows="10" required placeholder="Escribí el artículo acá. Dejá una línea en blanco entre párrafos. Podés usar **negrita** y líneas que empiecen con ## para subtítulos."></textarea>
+                        <p class="field-hint">No hace falta HTML: separá párrafos con una línea en blanco, usá **texto** para negrita, ## Subtítulo para títulos de sección, y líneas que empiecen con "- " para listas.</p>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="audiencia">¿A quién está dirigido? (opcional)</label>
+                        <input type="text" id="audiencia" placeholder="Ej. Para agricultores">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="imagenArchivo">Imagen de portada (opcional)</label>
+                        <input type="file" id="imagenArchivo" accept="image/jpeg,image/png,image/webp,image/gif">
+                        <p class="field-hint">Si no subís nada, se muestra un ícono de fondo. Máximo 2 MB.</p>
+                        <div class="image-preview" id="previewImagen">Sin imagen</div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="checkbox" id="publicado" checked style="width:auto;">
+                            Publicado (visible en la web)
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="btnGuardar">Guardar</button>
+                        <button type="button" class="btn-secondary" id="btnCancelar" style="display:none;">Cancelar edición</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        let postEditandoId = null;
+        let urlImagenActual = null;
+
+        const form = document.getElementById("formPost");
+        const inputImagen = document.getElementById("imagenArchivo");
+        const previewImagen = document.getElementById("previewImagen");
+
+        mostrarPreviewImagen(inputImagen, previewImagen);
+
+        function limpiarFormulario() {
+            postEditandoId = null;
+            urlImagenActual = null;
+            form.reset();
+            document.getElementById("postId").value = "";
+            document.getElementById("publicado").checked = true;
+            document.getElementById("tituloFormulario").innerText = "Nuevo artículo";
+            document.getElementById("btnCancelar").style.display = "none";
+            previewImagen.innerHTML = "Sin imagen";
+        }
+
+        function cargarPostEnFormulario(post) {
+            postEditandoId = post.id;
+            urlImagenActual = post.imagen_url;
+            document.getElementById("postId").value = post.id;
+            document.getElementById("titulo").value = post.titulo;
+            document.getElementById("resumen").value = post.resumen;
+            document.getElementById("contenido").value = post.contenido;
+            document.getElementById("audiencia").value = post.audiencia || "";
+            document.getElementById("publicado").checked = post.publicado;
+            previewImagen.innerHTML = post.imagen_url
+                ? `<img src="${post.imagen_url}" alt="${escaparHtml(post.titulo)}">`
+                : "Sin imagen";
+            document.getElementById("tituloFormulario").innerText = `Editando: ${post.titulo}`;
+            document.getElementById("btnCancelar").style.display = "inline-flex";
+            window.scrollTo({ top: form.offsetTop - 100, behavior: "smooth" });
+        }
+
+        async function cargarLista() {
+            const contenedor = document.getElementById("listaPosts");
+            const posts = await (await apiFetch("/api/admin/blog")).json();
+
+            if (posts.length === 0) {
+                contenedor.innerHTML = '<p class="empty-state">Todavía no hay artículos.</p>';
+                return;
+            }
+
+            contenedor.innerHTML = posts
+                .map(
+                    (p) => `
+                        <div class="admin-list-item ${p.publicado ? "" : "borrador"}">
+                            <div class="admin-list-item-info">
+                                <h3>${escaparHtml(p.titulo)} <span class="badge-estado ${p.publicado ? "" : "oculto"}">${p.publicado ? "Publicado" : "Borrador"}</span></h3>
+                                <p>/blog/${escaparHtml(p.slug)}</p>
+                            </div>
+                            <div class="admin-list-item-actions">
+                                <button class="btn-icon" data-editar="${p.id}">✏️</button>
+                                <button class="btn-icon danger" data-borrar="${p.id}">🗑️</button>
+                            </div>
+                        </div>
+                    `
+                )
+                .join("");
+
+            contenedor.querySelectorAll("[data-editar]").forEach((boton) => {
+                boton.addEventListener("click", () => {
+                    const post = posts.find((p) => p.id === Number(boton.dataset.editar));
+                    cargarPostEnFormulario(post);
+                });
+            });
+
+            contenedor.querySelectorAll("[data-borrar]").forEach((boton) => {
+                boton.addEventListener("click", async () => {
+                    if (!confirm("¿Eliminar este artículo? No se puede deshacer.")) return;
+                    await apiFetch(`/api/admin/blog/${boton.dataset.borrar}`, { method: "DELETE" });
+                    showToast("Artículo eliminado.", "success");
+                    if (postEditandoId === Number(boton.dataset.borrar)) limpiarFormulario();
+                    cargarLista();
+                });
+            });
+        }
+
+        document.getElementById("btnCancelar").addEventListener("click", limpiarFormulario);
+
+        form.addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+            const boton = document.getElementById("btnGuardar");
+            boton.disabled = true;
+            boton.innerText = "Guardando...";
+
+            try {
+                let imagenUrl = urlImagenActual;
+                const nuevaImagenUrl = await subirImagenSiHay(inputImagen);
+                if (nuevaImagenUrl) imagenUrl = nuevaImagenUrl;
+
+                const payload = {
+                    titulo: document.getElementById("titulo").value,
+                    resumen: document.getElementById("resumen").value,
+                    contenido: document.getElementById("contenido").value,
+                    audiencia: document.getElementById("audiencia").value || null,
+                    imagen_url: imagenUrl,
+                    publicado: document.getElementById("publicado").checked,
+                };
+
+                const url = postEditandoId ? `/api/admin/blog/${postEditandoId}` : "/api/admin/blog";
+                const metodo = postEditandoId ? "PUT" : "POST";
+
+                const respuesta = await apiFetch(url, {
+                    method: metodo,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(error.detail || "No se pudo guardar el artículo.");
+                }
+
+                const guardado = await respuesta.json();
+                showToast(
+                    postEditandoId
+                        ? "Artículo actualizado."
+                        : `Artículo publicado en /blog/${guardado.slug}`,
+                    "success"
+                );
+                limpiarFormulario();
+                cargarLista();
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`, "error");
+            } finally {
+                boton.disabled = false;
+                boton.innerText = "Guardar";
+            }
+        });
+
+        (async () => {
+            await requerirSesion();
+            cargarLista();
+        })();
+    </script>
+</body>
+</html>

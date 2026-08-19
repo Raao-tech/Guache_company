@@ -1,0 +1,231 @@
+/* Panel de administración — reusa las variables de /styles.css */
+
+body.admin-body {
+    background: var(--bg-light);
+    min-height: 100vh;
+}
+
+.admin-topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.admin-topbar .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+}
+
+.admin-nav {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.admin-nav a {
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+}
+
+.admin-nav a:hover,
+.admin-nav a.active {
+    background: #E8F5E9;
+    color: var(--primary);
+}
+
+.admin-main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+
+.admin-main h1 {
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    margin-bottom: 0.3rem;
+}
+
+.admin-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+}
+
+/* --- Login --- */
+.login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.login-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+}
+
+.login-card .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    margin-bottom: 0.3rem;
+}
+
+.login-card p.subtitle {
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+/* --- Layout admin: lista + formulario --- */
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.5fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.admin-panel {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.admin-panel h2 {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.admin-list-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.admin-list-item.inactivo,
+.admin-list-item.borrador {
+    opacity: 0.55;
+}
+
+.admin-list-item-info h3 {
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+}
+
+.admin-list-item-info p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.admin-list-item-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.btn-icon {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.btn-icon.danger:hover {
+    background: #FDECEA;
+    border-color: #E57373;
+}
+
+.badge-estado {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 50px;
+    background: #E8F5E9;
+    color: var(--primary);
+}
+
+.badge-estado.oculto {
+    background: #EEE;
+    color: var(--text-muted);
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.image-preview {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 4 / 3;
+    border-radius: 10px;
+    background: var(--bg-light);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 2rem 1rem;
+    font-size: 0.9rem;
+}
+
+.field-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: -0.3rem;
+}
+
+@media (max-width: 860px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+}

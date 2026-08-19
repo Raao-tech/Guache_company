@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de administración | Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div class="login-screen">
+        <div class="login-card">
+            <div class="logo">🌾 Panel Guache</div>
+            <p class="subtitle">Ingresá con tu usuario y clave de administrador.</p>
+
+            <form id="loginForm">
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label for="usuario">Usuario</label>
+                    <input type="text" id="usuario" required autocomplete="username">
+                </div>
+                <div class="form-group" style="margin-bottom:1.5rem;">
+                    <label for="clave">Clave</label>
+                    <input type="password" id="clave" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-primary btn-full" id="btnLogin">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+            const boton = document.getElementById("btnLogin");
+            boton.disabled = true;
+            boton.innerText = "Ingresando...";
+
+            try {
+                const respuesta = await fetch("/api/admin/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        usuario: document.getElementById("usuario").value,
+                        clave: document.getElementById("clave").value,
+                    }),
+                });
+
+                if (respuesta.ok) {
+                    window.location.href = "/admin/";
+                } else {
+                    const data = await respuesta.json();
+                    showToast(`⚠️ ${data.detail || "Usuario o clave incorrectos."}`, "error");
+                }
+            } catch (error) {
+                showToast("⚠️ Error de conexión con el servidor.", "error");
+            } finally {
+                boton.disabled = false;
+                boton.innerText = "Ingresar";
+            }
+        });
+    </script>
+</body>
+</html>

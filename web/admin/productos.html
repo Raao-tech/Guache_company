@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Al Detal | Panel Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/">Inicio</a>
+            <a href="/admin/productos.html" class="active">Catálogo Al Detal</a>
+            <a href="/admin/blog.html">Blog</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main">
+        <h1>Catálogo "Al Detal"</h1>
+        <p class="admin-subtitle">Lo que agregues acá aparece en la sección "Al Detal" de la página principal. Los productos marcados como inactivos quedan guardados pero no se muestran al público.</p>
+
+        <div class="admin-grid">
+            <div class="admin-panel">
+                <h2>Productos y servicios</h2>
+                <div class="admin-list" id="listaProductos">
+                    <p class="empty-state">Cargando...</p>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2 id="tituloFormulario">Agregar nuevo</h2>
+                <form id="formProducto">
+                    <input type="hidden" id="productoId">
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="nombre">Nombre del producto o servicio *</label>
+                        <input type="text" id="nombre" required placeholder="Ej. Café molido 500g">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="descripcion">Descripción *</label>
+                        <textarea id="descripcion" rows="3" required placeholder="Contale al cliente de qué se trata..."></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="precio">Precio (opcional)</label>
+                            <input type="number" id="precio" step="0.01" min="0" placeholder="Ej. 6.50">
+                        </div>
+                        <div class="form-group">
+                            <label for="moneda">Moneda</label>
+                            <select id="moneda">
+                                <option value="">Sin precio / a definir</option>
+                                <option value="USD">USD (dólar)</option>
+                                <option value="EUR">EUR (euro)</option>
+                                <option value="USDT">USDT</option>
+                                <option value="BTC">BTC (Bitcoin)</option>
+                                <option value="VES">VES (Bolívares)</option>
+                                <option value="COP">COP (Peso colombiano)</option>
+                                <option value="otra">Otra...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" id="grupoMonedaOtra" style="display:none; margin-bottom:1rem;">
+                        <label for="monedaOtra">¿Cuál moneda?</label>
+                        <input type="text" id="monedaOtra" placeholder="Ej. MXN, ARS...">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="imagenArchivo">Imagen (opcional)</label>
+                        <input type="file" id="imagenArchivo" accept="image/jpeg,image/png,image/webp,image/gif">
+                        <p class="field-hint">Si no subís nada, se muestra un ícono de fondo en su lugar. Máximo 2 MB.</p>
+                        <div class="image-preview" id="previewImagen">Sin imagen</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="orden">Orden (menor = primero)</label>
+                            <input type="number" id="orden" value="0" step="1">
+                        </div>
+                        <div class="form-group" style="justify-content:center;">
+                            <label style="display:flex; align-items:center; gap:0.5rem; margin-top:1.6rem;">
+                                <input type="checkbox" id="activo" checked style="width:auto;">
+                                Visible en la web
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="btnGuardar">Guardar</button>
+                        <button type="button" class="btn-secondary" id="btnCancelar" style="display:none;">Cancelar edición</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        let productoEditandoId = null;
+        let urlImagenActual = null;
+        const MONEDAS_CONOCIDAS = ["USD", "EUR", "USDT", "BTC", "VES", "COP"];
+
+        const form = document.getElementById("formProducto");
+        const selectMoneda = document.getElementById("moneda");
+        const grupoMonedaOtra = document.getElementById("grupoMonedaOtra");
+        const inputMonedaOtra = document.getElementById("monedaOtra");
+        const inputImagen = document.getElementById("imagenArchivo");
+        const previewImagen = document.getElementById("previewImagen");
+
+        selectMoneda.addEventListener("change", () => {
+            grupoMonedaOtra.style.display = selectMoneda.value === "otra" ? "block" : "none";
+        });
+
+        mostrarPreviewImagen(inputImagen, previewImagen);
+
+        function monedaSeleccionada() {
+            return selectMoneda.value === "otra" ? inputMonedaOtra.value.trim() : selectMoneda.value;
+        }
+
+        function setMonedaEnFormulario(moneda) {
+            if (moneda && !MONEDAS_CONOCIDAS.includes(moneda)) {
+                selectMoneda.value = "otra";
+                inputMonedaOtra.value = moneda;
+                grupoMonedaOtra.style.display = "block";
+            } else {
+                selectMoneda.value = moneda || "";
+                grupoMonedaOtra.style.display = "none";
+                inputMonedaOtra.value = "";
+            }
+        }
+
+        function limpiarFormulario() {
+            productoEditandoId = null;
+            urlImagenActual = null;
+            form.reset();
+            document.getElementById("productoId").value = "";
+            document.getElementById("tituloFormulario").innerText = "Agregar nuevo";
+            document.getElementById("btnCancelar").style.display = "none";
+            grupoMonedaOtra.style.display = "none";
+            previewImagen.innerHTML = "Sin imagen";
+        }
+
+        function cargarProductoEnFormulario(producto) {
+            productoEditandoId = producto.id;
+            urlImagenActual = producto.imagen_url;
+            document.getElementById("productoId").value = producto.id;
+            document.getElementById("nombre").value = producto.nombre;
+            document.getElementById("descripcion").value = producto.descripcion;
+            document.getElementById("precio").value = producto.precio ?? "";
+            setMonedaEnFormulario(producto.moneda);
+            document.getElementById("orden").value = producto.orden;
+            document.getElementById("activo").checked = producto.activo;
+            previewImagen.innerHTML = producto.imagen_url
+                ? `<img src="${producto.imagen_url}" alt="${escaparHtml(producto.nombre)}">`
+                : "Sin imagen";
+            document.getElementById("tituloFormulario").innerText = `Editando: ${producto.nombre}`;
+            document.getElementById("btnCancelar").style.display = "inline-flex";
+            window.scrollTo({ top: form.offsetTop - 100, behavior: "smooth" });
+        }
+
+        async function cargarLista() {
+            const contenedor = document.getElementById("listaProductos");
+            const productos = await (await apiFetch("/api/admin/productos")).json();
+
+            if (productos.length === 0) {
+                contenedor.innerHTML = '<p class="empty-state">Todavía no hay productos cargados.</p>';
+                return;
+            }
+
+            contenedor.innerHTML = productos
+                .map((p) => {
+                    const precioTexto = p.precio ? `${p.precio} ${p.moneda || ""}`.trim() : "Sin precio";
+                    return `
+                        <div class="admin-list-item ${p.activo ? "" : "inactivo"}">
+                            <div class="admin-list-item-info">
+                                <h3>${escaparHtml(p.nombre)} <span class="badge-estado ${p.activo ? "" : "oculto"}">${p.activo ? "Visible" : "Oculto"}</span></h3>
+                                <p>${escaparHtml(precioTexto)}</p>
+                            </div>
+                            <div class="admin-list-item-actions">
+                                <button class="btn-icon" data-editar="${p.id}">✏️</button>
+                                <button class="btn-icon danger" data-borrar="${p.id}">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                })
+                .join("");
+
+            contenedor.querySelectorAll("[data-editar]").forEach((boton) => {
+                boton.addEventListener("click", async () => {
+                    const producto = productos.find((p) => p.id === Number(boton.dataset.editar));
+                    cargarProductoEnFormulario(producto);
+                });
+            });
+
+            contenedor.querySelectorAll("[data-borrar]").forEach((boton) => {
+                boton.addEventListener("click", async () => {
+                    if (!confirm("¿Eliminar este producto? No se puede deshacer.")) return;
+                    await apiFetch(`/api/admin/productos/${boton.dataset.borrar}`, { method: "DELETE" });
+                    showToast("Producto eliminado.", "success");
+                    if (productoEditandoId === Number(boton.dataset.borrar)) limpiarFormulario();
+                    cargarLista();
+                });
+            });
+        }
+
+        document.getElementById("btnCancelar").addEventListener("click", limpiarFormulario);
+
+        form.addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+            const boton = document.getElementById("btnGuardar");
+            boton.disabled = true;
+            boton.innerText = "Guardando...";
+
+            try {
+                let imagenUrl = urlImagenActual;
+                const nuevaImagenUrl = await subirImagenSiHay(inputImagen);
+                if (nuevaImagenUrl) imagenUrl = nuevaImagenUrl;
+
+                const payload = {
+                    nombre: document.getElementById("nombre").value,
+                    descripcion: document.getElementById("descripcion").value,
+                    precio: document.getElementById("precio").value
+                        ? parseFloat(document.getElementById("precio").value)
+                        : null,
+                    moneda: monedaSeleccionada() || null,
+                    imagen_url: imagenUrl,
+                    activo: document.getElementById("activo").checked,
+                    orden: parseInt(document.getElementById("orden").value || "0", 10),
+                };
+
+                const url = productoEditandoId
+                    ? `/api/admin/productos/${productoEditandoId}`
+                    : "/api/admin/productos";
+                const metodo = productoEditandoId ? "PUT" : "POST";
+
+                const respuesta = await apiFetch(url, {
+                    method: metodo,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(error.detail || "No se pudo guardar el producto.");
+                }
+
+                showToast(productoEditandoId ? "Producto actualizado." : "Producto agregado.", "success");
+                limpiarFormulario();
+                cargarLista();
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`, "error");
+            } finally {
+                boton.disabled = false;
+                boton.innerText = "Guardar";
+            }
+        });
+
+        (async () => {
+            await requerirSesion();
+            cargarLista();
+        })();
+    </script>
+</body>
+</html>

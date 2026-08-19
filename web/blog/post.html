@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cómo elegir el alimento balanceado correcto | Blog Guache</title>
-    <meta name="description" content="Bovino, avícola o truchicultura: qué considerar al elegir el alimento balanceado según tu tipo de producción pecuaria.">
+    <title>Blog | Agroindustria Guache</title>
     <link rel="stylesheet" href="/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -12,6 +11,7 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- NAVBAR -->
     <header class="navbar">
         <div class="container nav-container">
             <a href="/" class="logo" style="text-decoration:none;color:inherit;">
@@ -32,47 +32,29 @@
         </div>
     </header>
 
-    <article class="section">
+    <article class="section" id="articulo">
         <div class="container">
-            <p class="breadcrumb"><a href="/blog/">Blog</a> / Para productores pecuarios</p>
+            <p class="breadcrumb"><a href="/blog/">Blog</a> / <span id="breadcrumbAudiencia">Artículo</span></p>
 
             <header class="article-header">
-                <div class="media-slot" aria-hidden="true">🐄</div>
-                <span class="audience-tag">Para productores pecuarios</span>
-                <h1 style="font-family:var(--font-heading);font-size:2.2rem;margin:1rem 0 0.5rem;">Cómo elegir el alimento balanceado correcto según tu tipo de producción</h1>
+                <div class="media-slot tone-tierra" id="articuloMediaSlot" aria-hidden="true">📰</div>
+                <span class="audience-tag" id="articuloAudiencia" style="display:none;"></span>
+                <h1 id="articuloTitulo" style="font-family:var(--font-heading);font-size:2.2rem;margin:1rem 0 0.5rem;">Cargando...</h1>
                 <p class="blog-meta" style="justify-content:center;">
-                    <span>17 de agosto de 2026</span><span>·</span><span>5 min de lectura</span>
+                    <span id="articuloFecha"></span>
                 </p>
             </header>
 
-            <div class="article-body">
-                <p>No existe un único "alimento balanceado" que sirva para todos los productores pecuarios. Un ganadero de leche, un avicultor de engorde y un truchicultor tienen necesidades nutricionales completamente distintas, y elegir mal puede significar meses de resultados por debajo de lo esperado. Guache formula alimento balanceado para tres sectores pecuarios — bovino, avícola y truchicultura — y esto es lo que conviene tener claro antes de elegir.</p>
-
-                <h2>Sector bovino: leche y carne no son lo mismo</h2>
-                <p>Un concentrado pensado para ganado de leche prioriza energía y proteína disponible para sostener la producción láctea, mientras que uno para ganado de carne se enfoca en ganancia de peso. Usar la misma fórmula para ambos objetivos rara vez da el mejor resultado. Lo primero es tener claro cuál es el objetivo productivo del hato antes de elegir el concentrado.</p>
-
-                <h2>Sector avícola: engorde vs. ponedoras</h2>
-                <p>Igual que en bovinos, un ave de engorde y una gallina ponedora tienen requerimientos distintos: la primera necesita ganancia de peso rápida y eficiente, la segunda necesita sostener la postura de forma constante en el tiempo. Guache formula alimento diferenciado para ambos casos.</p>
-
-                <h2>Truchicultura: una línea distinta, para zonas altas</h2>
-                <p>La producción de trucha es una línea diferenciadora dentro de la oferta de Guache, orientada a productores de acuicultura en zonas altas como Mérida. Es un sector con necesidades muy específicas de formulación, y contar con un proveedor que ya tenga experiencia en esta línea particular hace diferencia frente a adaptar un alimento genérico.</p>
-
-                <h2>Lo que deberías preguntarle siempre a tu proveedor</h2>
-                <ul>
-                    <li>¿La fórmula está pensada específicamente para mi etapa de producción (engorde, ponedoras, leche, carne)?</li>
-                    <li>¿Hay control de calidad por lote (humedad, impurezas, proteína)?</li>
-                    <li>¿Puede sostener el volumen que necesito de forma consistente, mes a mes?</li>
-                </ul>
-                <p>Guache produce su alimento balanceado en la misma planta de Acarigua donde procesa sus rubros agrícolas, con control de calidad lote por lote — lo que permite trazabilidad desde el grano hasta el saco de 40 KG que llega a tu unidad de producción.</p>
-            </div>
+            <div class="article-body" id="articuloContenido"></div>
 
             <div class="article-cta">
-                <p>¿Necesitás cotizar alimento balanceado para tu producción?</p>
-                <a href="/#cotizar" class="btn-primary">Solicitar cotización</a>
+                <p>¿Tenés dudas sobre esto?</p>
+                <button onclick="toggleChat()" class="btn-primary">💬 Hablar con Guache</button>
             </div>
         </div>
     </article>
 
+    <!-- FOOTER -->
     <footer class="site-footer">
         <div class="container">
             <div class="footer-grid">
@@ -120,7 +102,7 @@
             </div>
             <div class="chat-suggestions">
                 <button class="chip" onclick="usarSugerencia('¿Cuáles son los SKUs de Alimento Animal?')">🌾 Alimentos Animales</button>
-                <button class="chip" onclick="usarSugerencia('¿Tienen alimento para truchicultura?')">🐟 Truchicultura</button>
+                <button class="chip" onclick="usarSugerencia('¿Qué servicios de planta ofrecen en Acarigua?')">🏬 Servicios de Planta</button>
                 <button class="chip" onclick="usarSugerencia('¿Cuál es el horario de atención?')">🕒 Horarios</button>
             </div>
             <div class="chat-body" id="chatMessages">
@@ -136,5 +118,69 @@
     </div>
 
     <script src="/app.js"></script>
+    <script>
+        function formatearContenido(textoPlano) {
+            const escapado = escaparHtmlPublico(textoPlano);
+            const bloques = escapado.split(/\n\s*\n/);
+            return bloques
+                .map((bloque) => {
+                    const lineaTrim = bloque.trim();
+                    if (lineaTrim.startsWith("## ")) {
+                        return `<h2>${lineaTrim.slice(3)}</h2>`;
+                    }
+                    const lineas = lineaTrim.split("\n").map((l) => l.trim());
+                    if (lineas.length > 0 && lineas.every((l) => l.startsWith("- "))) {
+                        const items = lineas
+                            .map((l) => `<li>${l.slice(2).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</li>`)
+                            .join("");
+                        return `<ul>${items}</ul>`;
+                    }
+                    const conNegrita = lineaTrim.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+                    return `<p>${conNegrita.replace(/\n/g, "<br>")}</p>`;
+                })
+                .join("");
+        }
+
+        (async () => {
+            const slug = window.location.pathname.replace(/^\/blog\//, "").replace(/\/$/, "");
+
+            try {
+                const respuesta = await fetch(`/api/blog/posts/${slug}`);
+                if (!respuesta.ok) {
+                    document.getElementById("articulo").innerHTML =
+                        '<div class="container"><p class="empty-state">No encontramos este artículo. <a href="/blog/">Volver al blog</a>.</p></div>';
+                    return;
+                }
+                const post = await respuesta.json();
+
+                document.title = `${post.titulo} | Blog Guache`;
+                document.getElementById("articuloTitulo").innerText = post.titulo;
+
+                if (post.audiencia) {
+                    const tag = document.getElementById("articuloAudiencia");
+                    tag.innerText = post.audiencia;
+                    tag.style.display = "inline-block";
+                    document.getElementById("breadcrumbAudiencia").innerText = post.audiencia;
+                }
+
+                if (post.imagen_url) {
+                    document.getElementById("articuloMediaSlot").innerHTML =
+                        `<img src="${post.imagen_url}" alt="${escaparHtmlPublico(post.titulo)}">`;
+                }
+
+                if (post.fecha_publicacion) {
+                    const fecha = new Date(post.fecha_publicacion);
+                    document.getElementById("articuloFecha").innerText = fecha.toLocaleDateString("es-VE", {
+                        year: "numeric", month: "long", day: "numeric",
+                    });
+                }
+
+                document.getElementById("articuloContenido").innerHTML = formatearContenido(post.contenido);
+            } catch (error) {
+                document.getElementById("articulo").innerHTML =
+                    '<div class="container"><p class="empty-state">Error al cargar el artículo.</p></div>';
+            }
+        })();
+    </script>
 </body>
 </html>

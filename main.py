@@ -6,9 +6,11 @@ from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -16,7 +18,8 @@ from sqlalchemy.orm import Session
 from src import config
 from src.services.llm_service import generar_respuesta_llm
 from src.bots.telegram_bot import crear_aplicacion_bot
-from src.database import SessionLocal, CotizacionDB
+from src.database import get_db, CotizacionDB
+from src.routers import admin_auth, uploads, productos, blog
 
 # Configuración de logging
 logging.basicConfig(
@@ -66,15 +69,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ------------------------------------------------------------------
-# DEPENDENCIA DE BASE DE DATOS
-# ------------------------------------------------------------------
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Cookies de sesión firmadas para el panel de administración (/admin).
+# https_only=False a propósito: en local (http://localhost) el navegador
+# descarta cookies "Secure" sobre HTTP y el login no persistiría. En
+# producción no debilita nada real porque Nginx ya redirige todo HTTP a
+# HTTPS (deploy/agroguache.nginx) — nunca se llega a mandar en claro.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=config.SESSION_SECRET_KEY,
+    session_cookie="guache_admin_session",
+    max_age=60 * 60 * 8,  # 8 horas
+)
+
+app.include_router(admin_auth.router)
+app.include_router(uploads.router)
+app.include_router(productos.router)
+app.include_router(blog.router)
 
 # ------------------------------------------------------------------
 # DEPENDENCIA DE AUTENTICACIÓN (ADMINISTRACIÓN)
@@ -199,6 +209,20 @@ async def chat_guache(payload: ChatRequest):
     except Exception as e:
         logger.error(f"Error en chat Guache: {e}")
         raise HTTPException(status_code=500, detail="Error al procesar la respuesta.")
+
+# ------------------------------------------------------------------
+# PÁGINA DE ARTÍCULO DE BLOG (dinámica, misma plantilla para todos los slugs)
+# ------------------------------------------------------------------
+@app.get("/blog/{slug}")
+async def pagina_articulo_blog(slug: str):
+    """
+    Sirve siempre la misma plantilla (web/blog/post.html); el slug se lee
+    en el cliente desde la URL y el contenido se pide a
+    GET /api/blog/posts/{slug}. Reemplaza los archivos HTML individuales
+    que había antes por artículo (ahora viven en la base de datos).
+    """
+    return FileResponse("web/blog/post.html")
+
 
 # ------------------------------------------------------------------
 # ARCHIVOS ESTÁTICOS

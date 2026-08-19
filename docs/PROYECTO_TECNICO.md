@@ -24,13 +24,13 @@ Cualquier decisión de arquitectura debería considerarse con ese destino en men
 
 El proyecto es un **monolito** relativamente simple: un único backend en **FastAPI** que:
 
-1. Sirve el sitio web estático (HTML/CSS/JS, sin framework de frontend).
-2. Expone una API REST (salud, cotizaciones, chat).
+1. Sirve el sitio web (HTML/CSS/JS sin framework de frontend, con secciones dinámicas que leen de la BD).
+2. Expone una API REST (salud, cotizaciones, chat, catálogo "Al Detal", blog, panel de administración).
 3. Corre en segundo plano un **bot de Telegram** dentro del mismo proceso.
-4. Persiste datos en **SQLite** (un solo archivo, `cotizaciones.db`).
+4. Persiste datos en **Postgres en producción** (SQLite por defecto en desarrollo local), gestionado con Alembic.
 5. Usa un **LLM externo (Groq)** para generar las respuestas del asistente "Guache, el zorro", tanto en la web como en Telegram.
 
-No hay frontend framework, no hay autenticación, no hay panel de administración, no hay tienda/checkout, no hay blog y no hay tests automatizados. Es, deliberadamente, un MVP comercial (cotizaciones + asistente conversacional) sobre el que se construirá el resto de la visión 2027.
+Ya hay tests automatizados (pytest + CI/CD), un panel de administración básico (`/admin`, una sola cuenta compartida — §4.7) y un blog gestionable desde ahí. Sigue sin haber tienda/checkout real ni sistema de usuarios con roles múltiples — eso sigue siendo trabajo futuro de la visión 2027 (§8).
 
 ---
 
@@ -51,25 +51,38 @@ Project_0/
 │   └── versions/                 # Migraciones (una por cambio de esquema)
 ├── src/
 │   ├── config.py                # Carga y valida variables de entorno
-│   ├── database.py              # Motor SQLAlchemy + modelo CotizacionDB
+│   ├── database.py              # Motor SQLAlchemy + modelos + get_db compartido
+│   ├── routers/
+│   │   ├── admin_auth.py          # Login/logout de sesión + require_admin_session
+│   │   ├── uploads.py             # Subida de imágenes del panel
+│   │   ├── productos.py           # CRUD del catálogo "Al Detal"
+│   │   └── blog.py                # CRUD de artículos del blog
 │   ├── bots/
 │   │   └── telegram_bot.py      # Bot de Telegram (python-telegram-bot)
 │   └── services/
 │       └── llm_service.py       # Cliente Groq + prompt del asistente "Guache"
 ├── web/
-│   ├── index.html               # Landing page: hero, servicios, rubros, mayorista, detal (preview), blog (teaser), cotizar
-│   ├── app.js                   # Lógica de cotización, chat y menú móvil (fetch a la API)
+│   ├── index.html               # Landing page: hero, servicios, rubros, mayorista, detal (dinámico), blog (teaser), cotizar
+│   ├── app.js                   # Cotización, chat, menú móvil, render de detal/blog (fetch a la API)
 │   ├── styles.css               # Estilos (incluye .media-slot, ver §4.5)
+│   ├── uploads/                 # Imágenes subidas desde el panel (NO versionado, ver §4.7)
+│   ├── admin/                   # Panel de administración (ver §4.7)
+│   │   ├── login.html / admin.js / admin.css
+│   │   ├── index.html             # Dashboard
+│   │   ├── productos.html         # Gestión del catálogo "Al Detal"
+│   │   └── blog.html              # Gestión del blog
 │   └── blog/
-│       ├── index.html             # Listado de artículos
-│       └── *.html                 # Un artículo por archivo, sin backend/CMS (ver §4.5 y §8.3)
+│       ├── index.html             # Listado de artículos (dinámico, fetch a /api/blog/posts)
+│       └── post.html              # Plantilla única para cualquier artículo (dinámico por slug)
 ├── deploy/
 │   ├── agroguache.nginx           # Config de Nginx para el VPS de producción
 │   ├── agroguache.service         # Unit de systemd para correr uvicorn
 │   ├── backup_db.py               # Backup seguro + rotación de cotizaciones.db
 │   ├── agroguache-backup.service  # Unit de systemd (oneshot) para el backup
 │   ├── agroguache-backup.timer    # Timer de systemd: corre el backup a diario
-│   └── migrate_sqlite_to_postgres.py  # Migración única de datos SQLite -> Postgres
+│   ├── migrate_sqlite_to_postgres.py  # Migración única de datos SQLite -> Postgres
+│   ├── remote_deploy.sh           # Script que ejecuta el pipeline de CD en el VPS (ver §4.6)
+│   └── seed_blog.py                # Carga los 4 artículos de ejemplo en la BD (idempotente)
 └── docs/
     ├── EMPRESA.md                # Perfil corporativo (negocio)
     └── PROYECTO_TECNICO.md       # Este documento
@@ -83,7 +96,7 @@ Project_0/
 
 App FastAPI (`Agroindustria Guache API`) con un `lifespan` que:
 
-- Al arrancar: crea las tablas de SQLite (`Base.metadata.create_all`) e inicializa el bot de Telegram con `polling` en segundo plano dentro del mismo proceso.
+- Al arrancar: inicializa el bot de Telegram con `polling` en segundo plano dentro del mismo proceso (el esquema de la BD lo gestiona Alembic, no el lifespan — ver §4.2).
 - Al apagar: detiene el bot de Telegram limpiamente.
 
 **Endpoints actuales:**
@@ -97,6 +110,8 @@ App FastAPI (`Agroindustria Guache API`) con un `lifespan` que:
 | `/` (estático) | Sirve `web/` como sitio estático (SPA de una sola página). | — |
 
 CORS restringido vía `ALLOWED_ORIGINS` en `.env` (lista separada por comas). Por defecto solo permite `localhost`/`127.0.0.1:8000` para desarrollo — en producción debe definirse con el dominio real del sitio.
+
+Los endpoints del panel de administración (`/api/admin/*`, `/api/detal/*`, `/api/blog/*`) viven en `src/routers/` (montados en `main.py` vía `include_router`), no en esta tabla — ver §4.7.
 
 ### 4.2 Base de datos — `src/database.py`
 
@@ -138,19 +153,37 @@ Sitio estático, sin build step, sin framework, sin gestor de paquetes de fronte
 - **Hero** con propuesta de valor y estadísticas de planta.
 - **Servicios** (`#servicios`) — almacenamiento, asesoramiento técnico, venta de maquinaria (contenido de `EMPRESA.md` §6.3).
 - **Rubros** (`#rubros`) — café, maíz, cacao, cebada, arroz (`EMPRESA.md` §6.1).
-- **Catálogo al mayor** (`#productos`) — tarjetas de producto con SKU, hardcodeadas.
-- **Al Detal** (`#detal`) — panel de preview de la expansión a España/Colombia (`EMPRESA.md` §10). Es honesto sobre su estado: no hay carrito ni checkout (no existe ese backend todavía, ver §8.1), el único CTA funcional abre el chat con una pregunta prellenada (`preguntarSobreDetal()` en `app.js`).
-- **Blog (teaser)** (`#blog`) — 4 tarjetas que enlazan a `web/blog/`.
+- **Catálogo al mayor** (`#productos`) — tarjetas de producto con SKU, hardcodeadas (sigue así a propósito, ver §4.7 — nunca muestra precio fijo).
+- **Al Detal** (`#detal`) — desde agosto de 2026, **catálogo real y dinámico**, administrable desde el panel (§4.7): `app.js` pide `GET /api/detal/productos` y renderiza tarjetas con nombre, descripción, precio/moneda e imagen. Si todavía no hay productos cargados, se muestra el preview estático original ("muy pronto en España y Colombia"). Sigue sin carrito ni checkout — el CTA abre el chat.
+- **Blog (teaser)** (`#blog`) — dinámico, `GET /api/blog/posts` (últimos 4 publicados).
 - **Formulario de cotización** (`#cotizar`) → `POST /api/cotizar`.
 - **Footer** — contacto, navegación, estados con presencia.
 
-**Widget de chat flotante** ("Guache el zorro") con chips de sugerencia rápida → `POST /api/chat`, presente en todas las páginas (home y blog). El historial de conversación se mantiene solo en memoria del navegador (`chatHistory` en `app.js`), no se persiste en el backend.
+**Widget de chat flotante** ("Guache el zorro") con chips de sugerencia rápida → `POST /api/chat`, presente en todas las páginas (home, blog y panel de administración). El historial de conversación se mantiene solo en memoria del navegador (`chatHistory` en `app.js`), no se persiste en el backend.
 
 **Menú móvil:** a partir de 768px de ancho, la navegación colapsa a un botón hamburguesa (`inicializarMenuMovil()` en `app.js`); no depende de ningún framework, es toggle de clase CSS + `aria-expanded`.
 
-**`web/blog/`** — un artículo por archivo HTML (sin CMS, sin base de datos — es contenido estático de ejemplo, uno por cada tipo de cliente de `EMPRESA.md` §8: agricultores, productores pecuarios, distribuidores/mayoristas, y consumidor final de la futura venta al detal). `web/blog/index.html` lista los artículos. Cuando exista el panel de administración (§8.2/§8.3), esto debería migrar a contenido gestionado desde base de datos en vez de archivos HTML sueltos.
+**`web/blog/`** — desde agosto de 2026, **dinámico y respaldado por base de datos** (tabla `blog_posts`, gestionable desde §4.7). `index.html` pide `GET /api/blog/posts` y renderiza las tarjetas; `post.html` es una única plantilla que sirve para cualquier artículo — lee el slug de la URL (`GET /blog/{slug}`, ruteado en `main.py` antes del mount de estáticos) y pide `GET /api/blog/posts/{slug}`. El contenido se guarda como texto plano con un formato mínimo tipo markdown (`## ` para subtítulos, `**texto**` para negrita, líneas `- ` para listas, línea en blanco = párrafo nuevo) que `formatearContenido()` convierte a HTML **después** de escapar el texto (evita que un título con `<` rompa la página). Los 4 artículos que antes eran archivos HTML sueltos ahora son las primeras 4 filas de `blog_posts`, cargadas por `deploy/seed_blog.py` (idempotente, corre en cada deploy).
 
-**Sin imágenes reales todavía (a propósito):** en vez de fotos, los espacios visuales usan `.media-slot` (definido en `styles.css`) — un div con degradado de marca + un ícono/emoji centrado. La clase ya soporta que una `<img>` real se inserte dentro (`object-fit: cover` hace que encaje sin romper el diseño) y funciona igual de bien si no se inserta nada — pensado para que el futuro panel de administración pueda cargar fotos reales sin rediseñar nada.
+**Sin imágenes reales por defecto:** en vez de fotos, los espacios visuales usan `.media-slot` (definido en `styles.css`) — un div con degradado de marca + un ícono/emoji centrado. Si un producto o artículo tiene `imagen_url` (subida desde el panel, §4.7), se inserta una `<img>` real ahí mismo (`object-fit: cover` la hace encajar sin romper el diseño); si no, se ve el ícono. No hace falta rediseñar nada al empezar a cargar fotos.
+
+### 4.7 Panel de administración — `/admin`, `src/routers/`
+
+Permite a una persona sin conocimientos técnicos actualizar el catálogo "Al Detal" y el blog sin tocar código ni pedirle nada a un desarrollador. Vive completamente en el mismo backend (sin servicio aparte).
+
+**Autenticación:** sesión por cookie firmada (`starlette.middleware.sessions.SessionMiddleware`, `SESSION_SECRET_KEY` en `.env`), distinta de la auth HTTP Basic que protege `GET /api/cotizaciones` — ambas validan contra las mismas credenciales (`ADMIN_USERNAME` / `ADMIN_PASSWORD`), es la misma persona/cuenta compartida, no un sistema de usuarios múltiples (eso sigue pendiente, ver §7 ítem 3). Login en `POST /api/admin/login` (`src/routers/admin_auth.py`), dependencia `require_admin_session` protege el resto de las rutas `/api/admin/*`.
+
+**Páginas** (`web/admin/`, todas con `<meta name="robots" content="noindex, nofollow">`):
+- `login.html` — formulario de acceso.
+- `index.html` — dashboard con accesos directos y conteos rápidos.
+- `productos.html` — lista + formulario del catálogo "Al Detal" (nombre, descripción, precio, moneda —USD/EUR/USDT/BTC/VES/COP o "otra" a texto libre—, imagen opcional, visible/oculto, orden).
+- `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador).
+
+Ninguna de estas páginas HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en que su JS llama a `requerirSesion()` al cargar (redirige a `login.html` si no hay sesión) y en que **todas** las rutas `/api/admin/*` exigen sesión — ver el mismo patrón ya usado para `GET /api/cotizaciones`.
+
+**Subida de imágenes** (`POST /api/admin/upload`, `src/routers/uploads.py`): guarda el archivo en `web/uploads/` (no versionado, ver `.gitignore`) con un nombre aleatorio — la extensión se decide por el `content-type` validado, nunca por el nombre que manda el navegador. Límite de **2 MB por imagen**: el VPS tiene poco espacio en disco (~500 MB libres a agosto de 2026), vale la pena vigilarlo si se suben muchas fotos.
+
+**CRUD administrable** (`src/routers/productos.py`, `src/routers/blog.py`): endpoints públicos de solo lectura (`GET /api/detal/productos`, `GET /api/blog/posts[/​{slug}]` — solo devuelven ítems activos/publicados) y endpoints `/api/admin/...` con CRUD completo, protegidos por sesión. El slug de un post se genera una sola vez al crearlo (a partir del título, desambiguado con `-2`, `-3`... si se repite) y **no cambia** aunque se edite el título después — mantiene estables los links ya compartidos.
 
 ### 4.6 Despliegue — `deploy/`
 
@@ -201,6 +234,8 @@ sudo systemctl start agroguache.service
 | Validación de datos | Pydantic v2 |
 | Base de datos | SQLAlchemy ORM + Alembic. SQLite en desarrollo local; Postgres (driver `psycopg` v3) en producción vía `DATABASE_URL` |
 | Tests | pytest + `fastapi.testclient` |
+| Sesiones (panel admin) | `starlette.middleware.sessions` (cookies firmadas, `itsdangerous`) |
+| Subida de archivos | `python-multipart` (requerido por `UploadFile` de FastAPI) |
 | Bot conversacional | python-telegram-bot |
 | LLM / IA | Groq API (`openai/gpt-oss-20b`) |
 | Frontend | HTML5 + CSS3 + JavaScript vanilla (sin framework) |
@@ -222,12 +257,16 @@ pip install -r requirements.txt
 
 # 3. Configurar variables de entorno
 cp .env.example .env
-# Completar TELEGRAM_BOT_TOKEN, GROQ_API_KEY, ADMIN_USERNAME y ADMIN_PASSWORD en .env
+# Completar TELEGRAM_BOT_TOKEN, GROQ_API_KEY, ADMIN_USERNAME, ADMIN_PASSWORD
+# y SESSION_SECRET_KEY en .env (esta última: python3 -c "import secrets; print(secrets.token_hex(32))")
 
 # 4. Aplicar migraciones (crea/actualiza el esquema de cotizaciones.db)
 alembic upgrade head
 
-# 5. Levantar el servidor (web + API + bot de Telegram)
+# 5. (Opcional) Cargar los 4 artículos de ejemplo del blog
+python deploy/seed_blog.py
+
+# 6. Levantar el servidor (web + API + bot de Telegram)
 uvicorn main:app --reload --port 8000
 ```
 
@@ -242,8 +281,9 @@ Los tests usan una base de datos SQLite temporal aislada (no tocan `cotizaciones
 
 - La web queda disponible en `http://localhost:8000`.
 - Documentación interactiva de la API (Swagger, autogenerada por FastAPI) en `http://localhost:8000/docs`.
-- Si no se configura `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`, `ADMIN_USERNAME` o `ADMIN_PASSWORD`, la app **falla al arrancar** (`src/config.py` lanza `ValueError`) — las cuatro son obligatorias hoy, no opcionales.
+- Si no se configura `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` o `SESSION_SECRET_KEY`, la app **falla al arrancar** (`src/config.py` lanza `ValueError`) — las cinco son obligatorias hoy, no opcionales.
 - `GET /api/cotizaciones` pide usuario/clave (HTTP Basic Auth) — usa las credenciales `ADMIN_USERNAME` / `ADMIN_PASSWORD` definidas en `.env`.
+- Panel de administración en `http://localhost:8000/admin/login.html` — mismas credenciales `ADMIN_USERNAME` / `ADMIN_PASSWORD` (ver §4.7).
 - **Si ya tenías una `cotizaciones.db` creada antes de que existieran las migraciones** (con las tablas ya presentes), no corras `alembic upgrade head` sobre ella directamente — fallaría porque la tabla ya existe. En su lugar, corré `alembic stamp head` una única vez para decirle a Alembic "esta base ya está al día", sin tocar los datos. Esto aplica en particular al **VPS de producción** al desplegar este cambio por primera vez.
 
 ---
@@ -254,7 +294,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 
 1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
-3. **Sin autenticación de usuarios/roles** — la protección del punto 1 es una clave de administrador compartida, no un sistema de usuarios. Sigue siendo un prerrequisito para el panel de administración (§8.2), que necesitará roles diferenciados (admin/secretaría vs. público).
+3. **Sin autenticación de usuarios/roles** — sigue siendo una clave de administrador compartida (ahora también protege el panel de administración vía sesión, §4.7, no solo HTTP Basic). Alcanza para "una sola persona administra todo", que es el caso de uso actual. Si el equipo de Guache crece y se necesita diferenciar quién puede editar qué (admin/secretaría vs. público), ahí sí hace falta un sistema de usuarios/roles real — no antes.
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. ~~SQLite en un solo archivo~~ — **Resuelto (17 de agosto de 2026).** Producción corre en Postgres (§4.2). Corte hecho con downtime de ~30 segundos; los 8 registros existentes migraron sin pérdida ni colisión de IDs (verificado fila por fila antes de dar el visto bueno). **Nota:** `deploy/backup_db.py` sigue usando el backup API de `sqlite3` — como producción ya no escribe en `cotizaciones.db`, ese script quedó apuntando a una base congelada. Hay que adaptarlo a `pg_dump` antes de instalar el timer de backups en el VPS (nunca se llegó a instalar, así que hoy producción no tiene backups automáticos corriendo).
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
@@ -280,17 +320,15 @@ Implica, como mínimo:
 
 ### 8.2 Panel de administración (CMS interno)
 
-Hoy **todo el contenido de la web está hardcodeado** en `index.html` y `web/blog/*.html` (productos, textos, precios de referencia, artículos). La meta es que alguien del equipo de Guache — no necesariamente un desarrollador — pueda:
-- Editar el catálogo (productos, precios, disponibilidad, imágenes) — el patrón `.media-slot` (§4.5) ya deja el hueco visual listo para que cargar una foto sea tan simple como insertar una `<img>`, sin tocar CSS.
-- Editar textos y secciones de la landing.
-- Publicar entradas de blog (§8.3).
-- Ver y gestionar cotizaciones/pedidos (reemplazando el actual `GET /api/cotizaciones` abierto por una vista protegida).
+**Primera versión hecha (agosto 2026)** — ver §4.7. Una sola persona, sin conocimientos técnicos, puede desde `/admin`:
+- Agregar/editar/ocultar/borrar productos y servicios del catálogo "Al Detal" (nombre, descripción, precio en la moneda que elija, imagen opcional).
+- Escribir, editar y publicar/despublicar artículos del blog.
 
-Requiere primero **autenticación y roles** (mínimo: rol administrador/secretaría vs. público), lo cual hoy no existe en absoluto en el proyecto.
+**Lo que todavía queda hardcodeado** (no forma parte de esta primera versión): el Hero, la sección de Servicios, Rubros, y el catálogo mayorista con SKUs (`index.html`) — editar esos textos sigue requiriendo un cambio de código y un deploy. Tampoco hay gestión de cotizaciones/pedidos desde el panel (`GET /api/cotizaciones` sigue siendo solo una vista protegida por HTTP Basic, sin UI). Y sigue sin haber **roles** — es una sola cuenta de administrador compartida (ver §7 ítem 3), suficiente mientras sea una sola persona la que administra.
 
 ### 8.3 Blog / centro de contenido
 
-Sección pensada para construir comunidad alrededor de la marca Guache: artículos de ayuda para productores, contenido de valor para clientes de detal (recetas, origen del producto, etc.). **Existe una versión de ejemplo (agosto 2026)** en `web/blog/` — 4 artículos estáticos, uno por tipo de cliente de `EMPRESA.md` §8 (agricultores, productores pecuarios, distribuidores, consumidor final). Es contenido hardcodeado en HTML, sin modelo de datos ni autoría real — sirve como plantilla de tono/estructura, no como el sistema final. Requiere modelo de contenido (posts, autor, fecha, imagen) gestionable desde el panel de administración (§8.2) para dejar de ser estático.
+**Hecho (agosto 2026)** — el blog dejó de ser HTML estático y pasa por la base de datos (`blog_posts`, gestionable desde el panel, §4.7). Los 4 artículos de ejemplo originales (uno por tipo de cliente de `EMPRESA.md` §8) se migraron a la BD vía `deploy/seed_blog.py`. Lo que falta para que sea un "centro de contenido" completo: autoría múltiple (hoy no hay concepto de autor, todo es "Guache"), categorías/tags reales (hoy es un campo de texto libre llamado "audiencia"), y comentarios o algún espacio de interacción con la comunidad — nada de eso está planeado todavía, agregar solo si hay necesidad real.
 
 ### 8.4 Automatización de pedidos vía bot
 
@@ -334,6 +372,7 @@ Adaptar textos, catálogo y tono de marca a España y Colombia, manteniendo la i
 
 - ~~CI/CD~~ — **Hecho (agosto 2026).** Ver §4.6 para el detalle del pipeline.
 - **Backups automáticos de base de datos: pendiente de nuevo.** El timer de systemd (`agroguache-backup.timer`, §4.6) nunca se llegó a instalar en el VPS, y de todas formas `backup_db.py` está escrito para SQLite (usa el backup API de `sqlite3`) — ahora que producción corre en Postgres, hay que reescribirlo para usar `pg_dump` antes de instalar el timer. Hoy producción no tiene backups automáticos corriendo. Sigue faltando además la copia off-site.
+- **Espacio en disco del VPS, a vigilar.** A agosto de 2026 quedan ~500 MB libres (instalar Postgres ya usó buena parte). Las imágenes del panel de administración (§4.7) suman a este límite (2 MB por imagen, sin límite de cantidad todavía) — si se cargan muchas fotos, conviene revisar espacio disponible (`df -h`) antes de que se llene, o mover a almacenamiento externo si el catálogo crece mucho.
 - Contenerización (Docker) para reducir fricción entre entornos de desarrollo/producción, si el equipo crece.
 
 ---

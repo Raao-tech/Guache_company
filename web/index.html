@@ -181,23 +181,25 @@
                     <button onclick="preguntarSobreDetal()" class="btn-secondary" style="background:transparent;border-color:rgba(255,255,255,0.4);color:#fff;">💬 Preguntale a Guache</button>
                 </div>
                 <div>
-                    <div class="detal-categorias">
-                        <figure>
-                            <div class="media-slot slot-sm" aria-hidden="true">☕</div>
-                            <figcaption>Café</figcaption>
-                        </figure>
-                        <figure>
-                            <div class="media-slot slot-sm tone-tierra" aria-hidden="true">🍫</div>
-                            <figcaption>Cacao</figcaption>
-                        </figure>
-                        <figure>
-                            <div class="media-slot slot-sm tone-naranja" aria-hidden="true">🍚</div>
-                            <figcaption>Arroz</figcaption>
-                        </figure>
-                        <figure>
-                            <div class="media-slot slot-sm tone-verde-oscuro" aria-hidden="true">🌽</div>
-                            <figcaption>Harinas</figcaption>
-                        </figure>
+                    <div id="detalContenido">
+                        <div class="detal-categorias">
+                            <figure>
+                                <div class="media-slot slot-sm" aria-hidden="true">☕</div>
+                                <figcaption>Café</figcaption>
+                            </figure>
+                            <figure>
+                                <div class="media-slot slot-sm tone-tierra" aria-hidden="true">🍫</div>
+                                <figcaption>Cacao</figcaption>
+                            </figure>
+                            <figure>
+                                <div class="media-slot slot-sm tone-naranja" aria-hidden="true">🍚</div>
+                                <figcaption>Arroz</figcaption>
+                            </figure>
+                            <figure>
+                                <div class="media-slot slot-sm tone-verde-oscuro" aria-hidden="true">🌽</div>
+                                <figcaption>Harinas</figcaption>
+                            </figure>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -210,43 +212,8 @@
             <h2 class="section-title">Del Campo a tu Mesa: Nuestro Blog</h2>
             <p class="section-subtitle">Contenido para cada tipo de lector que forma parte del mundo Guache.</p>
 
-            <div class="blog-grid">
-                <a href="/blog/comenzar-en-agricultura.html" class="blog-card">
-                    <div class="media-slot tone-tierra" aria-hidden="true">🧑‍🌾</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para agricultores</span>
-                        <h3>Primeros pasos para el pequeño agricultor</h3>
-                        <p>Cómo el almacenamiento, la asesoría técnica y la maquinaria pueden cambiar el resultado de tu cosecha.</p>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
-                <a href="/blog/alimento-balanceado-guia.html" class="blog-card">
-                    <div class="media-slot" aria-hidden="true">🐄</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para productores pecuarios</span>
-                        <h3>Cómo elegir el alimento balanceado correcto</h3>
-                        <p>Bovino, avícola o truchicultura: qué considerar según tu etapa de producción.</p>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
-                <a href="/blog/elegir-proveedor-mayorista.html" class="blog-card">
-                    <div class="media-slot tone-naranja" aria-hidden="true">🚚</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para distribuidores</span>
-                        <h3>5 cosas a evaluar en un proveedor mayorista</h3>
-                        <p>Consistencia, trazabilidad y logística: lo que debería ofrecerte tu proveedor de harinas y cereales.</p>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
-                <a href="/blog/recetas-harina-de-maiz.html" class="blog-card">
-                    <div class="media-slot tone-verde-oscuro" aria-hidden="true">🫓</div>
-                    <div class="blog-card-body">
-                        <span class="audience-tag">Para tu hogar</span>
-                        <h3>3 recetas tradicionales con harina de maíz</h3>
-                        <p>Un adelanto del sabor latinoamericano que Guache quiere llevar a más hogares.</p>
-                        <span class="read-more">Leer más →</span>
-                    </div>
-                </a>
+            <div class="blog-grid" id="blogTeaserGrid">
+                <p class="empty-state">Cargando artículos...</p>
             </div>
 
             <div class="section-footer-link">
