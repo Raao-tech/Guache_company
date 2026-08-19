@@ -9,13 +9,22 @@ async function apiFetch(url, opciones = {}) {
     return respuesta;
 }
 
-// Llamar al cargar cualquier página protegida del panel (todas menos login.html)
+// Llamar al cargar cualquier página protegida del panel (todas menos login.html).
+// Devuelve {username, rol} y oculta cualquier elemento marcado
+// data-solo-admin si el usuario logueado no tiene rol "admin" (ej. Assistent_1).
 async function requerirSesion() {
     const respuesta = await fetch("/api/admin/whoami", { credentials: "same-origin" });
     const data = await respuesta.json();
     if (!data.autenticado) {
         window.location.href = "/admin/login.html";
+        return null;
     }
+
+    document.querySelectorAll("[data-solo-admin]").forEach((el) => {
+        if (data.rol !== "admin") el.style.display = "none";
+    });
+
+    return data;
 }
 
 async function cerrarSesion() {

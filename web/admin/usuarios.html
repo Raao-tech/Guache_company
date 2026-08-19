@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios | Panel Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/">Inicio</a>
+            <a href="/admin/productos.html">Catálogo Al Detal</a>
+            <a href="/admin/blog.html">Blog</a>
+            <a href="/admin/usuarios.html" class="active">Usuarios</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main" id="contenidoPagina">
+        <h1>Usuarios del panel</h1>
+        <p class="admin-subtitle">Rol "admin" = permisos totales, incluida esta pantalla. Rol "asistente" = puede hacer todo lo demás (catálogo y blog), pero no puede crear, editar ni borrar usuarios.</p>
+
+        <div class="admin-grid">
+            <div class="admin-panel">
+                <h2>Cuentas existentes</h2>
+                <div class="admin-list" id="listaUsuarios">
+                    <p class="empty-state">Cargando...</p>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2 id="tituloFormulario">Agregar usuario</h2>
+                <form id="formUsuario">
+                    <input type="hidden" id="usuarioId">
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="username">Usuario *</label>
+                        <input type="text" id="username" required placeholder="Ej. Senaida">
+                        <p class="field-hint" id="hintUsername">No se puede cambiar después de creado.</p>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label for="clave" id="labelClave">Clave *</label>
+                        <input type="text" id="clave" placeholder="Mínimo 4 caracteres">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="rol">Rol</label>
+                            <select id="rol">
+                                <option value="asistente">Asistente</option>
+                                <option value="admin">Admin (permisos totales)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="justify-content:center;">
+                            <label style="display:flex; align-items:center; gap:0.5rem; margin-top:1.6rem;">
+                                <input type="checkbox" id="activo" checked style="width:auto;">
+                                Cuenta activa
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="btnGuardar">Guardar</button>
+                        <button type="button" class="btn-secondary" id="btnCancelar" style="display:none;">Cancelar edición</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        let usuarioEditandoId = null;
+
+        const form = document.getElementById("formUsuario");
+        const inputUsername = document.getElementById("username");
+        const inputClave = document.getElementById("clave");
+        const labelClave = document.getElementById("labelClave");
+        const hintUsername = document.getElementById("hintUsername");
+
+        function limpiarFormulario() {
+            usuarioEditandoId = null;
+            form.reset();
+            document.getElementById("usuarioId").value = "";
+            document.getElementById("activo").checked = true;
+            document.getElementById("tituloFormulario").innerText = "Agregar usuario";
+            document.getElementById("btnCancelar").style.display = "none";
+            inputUsername.disabled = false;
+            hintUsername.style.display = "none";
+            labelClave.innerText = "Clave *";
+            inputClave.placeholder = "Mínimo 4 caracteres";
+            inputClave.required = true;
+        }
+
+        function cargarUsuarioEnFormulario(usuario) {
+            usuarioEditandoId = usuario.id;
+            document.getElementById("usuarioId").value = usuario.id;
+            inputUsername.value = usuario.username;
+            inputUsername.disabled = true;
+            hintUsername.style.display = "block";
+            document.getElementById("rol").value = usuario.rol;
+            document.getElementById("activo").checked = usuario.activo;
+            labelClave.innerText = "Nueva clave (opcional)";
+            inputClave.placeholder = "Dejar en blanco para no cambiarla";
+            inputClave.required = false;
+            inputClave.value = "";
+            document.getElementById("tituloFormulario").innerText = `Editando: ${usuario.username}`;
+            document.getElementById("btnCancelar").style.display = "inline-flex";
+            window.scrollTo({ top: form.offsetTop - 100, behavior: "smooth" });
+        }
+
+        async function cargarLista() {
+            const contenedor = document.getElementById("listaUsuarios");
+            const usuarios = await (await apiFetch("/api/admin/usuarios")).json();
+
+            if (usuarios.length === 0) {
+                contenedor.innerHTML = '<p class="empty-state">No hay usuarios cargados todavía.</p>';
+                return;
+            }
+
+            contenedor.innerHTML = usuarios
+                .map(
+                    (u) => `
+                        <div class="admin-list-item ${u.activo ? "" : "inactivo"}">
+                            <div class="admin-list-item-info">
+                                <h3>${escaparHtml(u.username)} <span class="badge-estado ${u.activo ? "" : "oculto"}">${u.rol === "admin" ? "Admin" : "Asistente"}${u.activo ? "" : " · inactivo"}</span></h3>
+                            </div>
+                            <div class="admin-list-item-actions">
+                                <button class="btn-icon" data-editar="${u.id}">✏️</button>
+                                <button class="btn-icon danger" data-borrar="${u.id}">🗑️</button>
+                            </div>
+                        </div>
+                    `
+                )
+                .join("");
+
+            contenedor.querySelectorAll("[data-editar]").forEach((boton) => {
+                boton.addEventListener("click", () => {
+                    const usuario = usuarios.find((u) => u.id === Number(boton.dataset.editar));
+                    cargarUsuarioEnFormulario(usuario);
+                });
+            });
+
+            contenedor.querySelectorAll("[data-borrar]").forEach((boton) => {
+                boton.addEventListener("click", async () => {
+                    if (!confirm("¿Eliminar este usuario? No se puede deshacer.")) return;
+                    const respuesta = await apiFetch(`/api/admin/usuarios/${boton.dataset.borrar}`, {
+                        method: "DELETE",
+                    });
+                    if (!respuesta.ok) {
+                        const error = await respuesta.json();
+                        showToast(`⚠️ ${error.detail}`, "error");
+                        return;
+                    }
+                    showToast("Usuario eliminado.", "success");
+                    if (usuarioEditandoId === Number(boton.dataset.borrar)) limpiarFormulario();
+                    cargarLista();
+                });
+            });
+        }
+
+        document.getElementById("btnCancelar").addEventListener("click", limpiarFormulario);
+
+        form.addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+            const boton = document.getElementById("btnGuardar");
+            boton.disabled = true;
+            boton.innerText = "Guardando...";
+
+            try {
+                const rol = document.getElementById("rol").value;
+                const activo = document.getElementById("activo").checked;
+                let respuesta;
+
+                if (usuarioEditandoId) {
+                    const payload = { rol, activo };
+                    if (inputClave.value) payload.clave = inputClave.value;
+                    respuesta = await apiFetch(`/api/admin/usuarios/${usuarioEditandoId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                } else {
+                    respuesta = await apiFetch("/api/admin/usuarios", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            username: inputUsername.value,
+                            clave: inputClave.value,
+                            rol,
+                            activo,
+                        }),
+                    });
+                }
+
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(error.detail || "No se pudo guardar el usuario.");
+                }
+
+                showToast(usuarioEditandoId ? "Usuario actualizado." : "Usuario creado.", "success");
+                limpiarFormulario();
+                cargarLista();
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`, "error");
+            } finally {
+                boton.disabled = false;
+                boton.innerText = "Guardar";
+            }
+        });
+
+        (async () => {
+            const sesion = await requerirSesion();
+            if (!sesion) return;
+
+            if (sesion.rol !== "admin") {
+                document.getElementById("contenidoPagina").innerHTML =
+                    '<p class="empty-state">No tenés permiso para ver esta página. <a href="/admin/">Volver al inicio</a>.</p>';
+                return;
+            }
+
+            cargarLista();
+        })();
+    </script>
+</body>
+</html>

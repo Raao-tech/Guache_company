@@ -53,10 +53,11 @@ Project_0/
 │   ├── config.py                # Carga y valida variables de entorno
 │   ├── database.py              # Motor SQLAlchemy + modelos + get_db compartido
 │   ├── routers/
-│   │   ├── admin_auth.py          # Login/logout de sesión + require_admin_session
+│   │   ├── admin_auth.py          # Login/logout de sesión + require_admin_session/require_full_admin_role
 │   │   ├── uploads.py             # Subida de imágenes del panel
 │   │   ├── productos.py           # CRUD del catálogo "Al Detal"
-│   │   └── blog.py                # CRUD de artículos del blog
+│   │   ├── blog.py                # CRUD de artículos del blog
+│   │   └── usuarios.py            # CRUD de cuentas del panel (solo rol admin)
 │   ├── bots/
 │   │   └── telegram_bot.py      # Bot de Telegram (python-telegram-bot)
 │   └── services/
@@ -70,7 +71,8 @@ Project_0/
 │   │   ├── login.html / admin.js / admin.css
 │   │   ├── index.html             # Dashboard
 │   │   ├── productos.html         # Gestión del catálogo "Al Detal"
-│   │   └── blog.html              # Gestión del blog
+│   │   ├── blog.html              # Gestión del blog
+│   │   └── usuarios.html          # Gestión de cuentas (solo visible/accesible para rol admin)
 │   └── blog/
 │       ├── index.html             # Listado de artículos (dinámico, fetch a /api/blog/posts)
 │       └── post.html              # Plantilla única para cualquier artículo (dinámico por slug)
@@ -82,7 +84,8 @@ Project_0/
 │   ├── agroguache-backup.timer    # Timer de systemd: corre el backup a diario
 │   ├── migrate_sqlite_to_postgres.py  # Migración única de datos SQLite -> Postgres
 │   ├── remote_deploy.sh           # Script que ejecuta el pipeline de CD en el VPS (ver §4.6)
-│   └── seed_blog.py                # Carga los 4 artículos de ejemplo en la BD (idempotente)
+│   ├── seed_blog.py                # Carga los 4 artículos de ejemplo en la BD (idempotente)
+│   └── seed_usuarios.py            # Crea las cuentas iniciales del panel (idempotente)
 └── docs/
     ├── EMPRESA.md                # Perfil corporativo (negocio)
     └── PROYECTO_TECNICO.md       # Este documento
@@ -167,24 +170,6 @@ Sitio estático, sin build step, sin framework, sin gestor de paquetes de fronte
 
 **Sin imágenes reales por defecto:** en vez de fotos, los espacios visuales usan `.media-slot` (definido en `styles.css`) — un div con degradado de marca + un ícono/emoji centrado. Si un producto o artículo tiene `imagen_url` (subida desde el panel, §4.7), se inserta una `<img>` real ahí mismo (`object-fit: cover` la hace encajar sin romper el diseño); si no, se ve el ícono. No hace falta rediseñar nada al empezar a cargar fotos.
 
-### 4.7 Panel de administración — `/admin`, `src/routers/`
-
-Permite a una persona sin conocimientos técnicos actualizar el catálogo "Al Detal" y el blog sin tocar código ni pedirle nada a un desarrollador. Vive completamente en el mismo backend (sin servicio aparte).
-
-**Autenticación:** sesión por cookie firmada (`starlette.middleware.sessions.SessionMiddleware`, `SESSION_SECRET_KEY` en `.env`), distinta de la auth HTTP Basic que protege `GET /api/cotizaciones` — ambas validan contra las mismas credenciales (`ADMIN_USERNAME` / `ADMIN_PASSWORD`), es la misma persona/cuenta compartida, no un sistema de usuarios múltiples (eso sigue pendiente, ver §7 ítem 3). Login en `POST /api/admin/login` (`src/routers/admin_auth.py`), dependencia `require_admin_session` protege el resto de las rutas `/api/admin/*`.
-
-**Páginas** (`web/admin/`, todas con `<meta name="robots" content="noindex, nofollow">`):
-- `login.html` — formulario de acceso.
-- `index.html` — dashboard con accesos directos y conteos rápidos.
-- `productos.html` — lista + formulario del catálogo "Al Detal" (nombre, descripción, precio, moneda —USD/EUR/USDT/BTC/VES/COP o "otra" a texto libre—, imagen opcional, visible/oculto, orden).
-- `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador).
-
-Ninguna de estas páginas HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en que su JS llama a `requerirSesion()` al cargar (redirige a `login.html` si no hay sesión) y en que **todas** las rutas `/api/admin/*` exigen sesión — ver el mismo patrón ya usado para `GET /api/cotizaciones`.
-
-**Subida de imágenes** (`POST /api/admin/upload`, `src/routers/uploads.py`): guarda el archivo en `web/uploads/` (no versionado, ver `.gitignore`) con un nombre aleatorio — la extensión se decide por el `content-type` validado, nunca por el nombre que manda el navegador. Límite de **2 MB por imagen**: el VPS tiene poco espacio en disco (~500 MB libres a agosto de 2026), vale la pena vigilarlo si se suben muchas fotos.
-
-**CRUD administrable** (`src/routers/productos.py`, `src/routers/blog.py`): endpoints públicos de solo lectura (`GET /api/detal/productos`, `GET /api/blog/posts[/​{slug}]` — solo devuelven ítems activos/publicados) y endpoints `/api/admin/...` con CRUD completo, protegidos por sesión. El slug de un post se genera una sola vez al crearlo (a partir del título, desambiguado con `-2`, `-3`... si se repite) y **no cambia** aunque se edite el título después — mantiene estables los links ya compartidos.
-
 ### 4.6 Despliegue — `deploy/`
 
 - **`agroguache.service`** — unit de systemd que corre `uvicorn main:app` con 2 workers, como usuario `root`, en un VPS.
@@ -223,6 +208,31 @@ sudo systemctl stop agroguache.service
 sudo cp /var/backups/agroguache/cotizaciones_<fecha>.db /var/www/agroguache/cotizaciones.db
 sudo systemctl start agroguache.service
 ```
+
+### 4.7 Panel de administración — `/admin`, `src/routers/`
+
+Permite a personas sin conocimientos técnicos actualizar el catálogo "Al Detal" y el blog sin tocar código ni pedirle nada a un desarrollador. Vive completamente en el mismo backend (sin servicio aparte).
+
+**Autenticación:** sesión por cookie firmada (`starlette.middleware.sessions.SessionMiddleware`, `SESSION_SECRET_KEY` en `.env`). Login en `POST /api/admin/login` (`src/routers/admin_auth.py`), dependencia `require_admin_session` protege el resto de las rutas `/api/admin/*`. Dos formas de autenticarse, evaluadas en ese orden:
+1. **Cuenta compartida de respaldo** (`ADMIN_USERNAME` / `ADMIN_PASSWORD` en `.env`) — la misma que protege `GET /api/cotizaciones` por HTTP Basic. Rol implícito `admin`.
+2. **Usuarios individuales** (tabla `usuarios`, agosto 2026) — cada persona con su propia cuenta y clave (hasheada con `bcrypt`, nunca en texto plano). Dos roles:
+   - `admin` — permisos totales, incluida la gestión de otros usuarios.
+   - `asistente` — puede hacer todo lo demás (catálogo, blog, subir imágenes) pero **no** puede crear, editar ni borrar usuarios — lo bloquea la dependencia `require_full_admin_role` (`src/routers/admin_auth.py`) con `403 Forbidden`.
+
+**Páginas** (`web/admin/`, todas con `<meta name="robots" content="noindex, nofollow">`):
+- `login.html` — formulario de acceso.
+- `index.html` — dashboard con accesos directos y conteos rápidos.
+- `productos.html` — lista + formulario del catálogo "Al Detal" (nombre, descripción, precio, moneda —USD/EUR/USDT/BTC/VES/COP o "otra" a texto libre—, imagen opcional, visible/oculto, orden).
+- `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador).
+- `usuarios.html` — lista + formulario de cuentas (usuario, clave, rol, activo/inactivo). Solo rol `admin`: el link de navegación se oculta para `asistente` (`data-solo-admin` en `admin.js`) y la página redirige si igual entra por URL directa — la protección real de todos modos es del lado del servidor (`require_full_admin_role`), esto es solo UX.
+
+Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en que su JS llama a `requerirSesion()` al cargar (redirige a `login.html` si no hay sesión) y en que **todas** las rutas `/api/admin/*` exigen sesión.
+
+**Subida de imágenes** (`POST /api/admin/upload`, `src/routers/uploads.py`): guarda el archivo en `web/uploads/` (no versionado, ver `.gitignore`) con un nombre aleatorio — la extensión se decide por el `content-type` validado, nunca por el nombre que manda el navegador. Límite de **2 MB por imagen**: el VPS tiene poco espacio en disco (~500 MB libres a agosto de 2026), vale la pena vigilarlo si se suben muchas fotos.
+
+**CRUD administrable** (`src/routers/productos.py`, `src/routers/blog.py`, `src/routers/usuarios.py`): endpoints públicos de solo lectura (`GET /api/detal/productos`, `GET /api/blog/posts[/​{slug}]` — solo devuelven ítems activos/publicados) y endpoints `/api/admin/...` con CRUD completo. El slug de un post se genera una sola vez al crearlo (a partir del título, desambiguado con `-2`, `-3`... si se repite) y **no cambia** aunque se edite el título después — mantiene estables los links ya compartidos.
+
+**Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con rol `admin`, `Assistent_1` con rol `asistente`. Cambiar o rotar esas claves se hace desde `usuarios.html` una vez logueado como `admin`, no editando el script.
 
 ---
 
@@ -263,8 +273,9 @@ cp .env.example .env
 # 4. Aplicar migraciones (crea/actualiza el esquema de cotizaciones.db)
 alembic upgrade head
 
-# 5. (Opcional) Cargar los 4 artículos de ejemplo del blog
+# 5. (Opcional) Cargar los 4 artículos de ejemplo del blog y las cuentas iniciales del panel
 python deploy/seed_blog.py
+python deploy/seed_usuarios.py
 
 # 6. Levantar el servidor (web + API + bot de Telegram)
 uvicorn main:app --reload --port 8000
@@ -294,7 +305,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 
 1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
-3. **Sin autenticación de usuarios/roles** — sigue siendo una clave de administrador compartida (ahora también protege el panel de administración vía sesión, §4.7, no solo HTTP Basic). Alcanza para "una sola persona administra todo", que es el caso de uso actual. Si el equipo de Guache crece y se necesita diferenciar quién puede editar qué (admin/secretaría vs. público), ahí sí hace falta un sistema de usuarios/roles real — no antes.
+3. ~~Sin autenticación de usuarios/roles~~ — **Resuelto (agosto 2026).** Tabla `usuarios` con cuentas individuales, clave hasheada (`bcrypt`) y dos roles (`admin` / `asistente`, ver §4.7). La cuenta compartida `ADMIN_USERNAME`/`ADMIN_PASSWORD` se mantiene como respaldo, no se retiró. **Sigue pendiente:** los roles solo distinguen "gestiona usuarios" vs. "no gestiona usuarios" — no hay permisos más finos (ej. "puede editar blog pero no catálogo"), agregar solo si aparece una necesidad real.
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. ~~SQLite en un solo archivo~~ — **Resuelto (17 de agosto de 2026).** Producción corre en Postgres (§4.2). Corte hecho con downtime de ~30 segundos; los 8 registros existentes migraron sin pérdida ni colisión de IDs (verificado fila por fila antes de dar el visto bueno). **Nota:** `deploy/backup_db.py` sigue usando el backup API de `sqlite3` — como producción ya no escribe en `cotizaciones.db`, ese script quedó apuntando a una base congelada. Hay que adaptarlo a `pg_dump` antes de instalar el timer de backups en el VPS (nunca se llegó a instalar, así que hoy producción no tiene backups automáticos corriendo).
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.

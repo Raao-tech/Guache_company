@@ -19,7 +19,7 @@ from src import config
 from src.services.llm_service import generar_respuesta_llm
 from src.bots.telegram_bot import crear_aplicacion_bot
 from src.database import get_db, CotizacionDB
-from src.routers import admin_auth, uploads, productos, blog
+from src.routers import admin_auth, uploads, productos, blog, usuarios
 
 # Configuración de logging
 logging.basicConfig(
@@ -85,6 +85,7 @@ app.include_router(admin_auth.router)
 app.include_router(uploads.router)
 app.include_router(productos.router)
 app.include_router(blog.router)
+app.include_router(usuarios.router)
 
 # ------------------------------------------------------------------
 # DEPENDENCIA DE AUTENTICACIÓN (ADMINISTRACIÓN)

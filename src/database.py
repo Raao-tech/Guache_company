@@ -95,3 +95,19 @@ class BlogPostDB(Base):
     publicado = Column(Boolean, default=True, nullable=False)
     fecha_publicacion = Column(DateTime, default=datetime.now)
     fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# Usuarios con acceso al panel de administración. Complementa (no
+# reemplaza) la cuenta compartida ADMIN_USERNAME/ADMIN_PASSWORD de
+# src/config.py, que sigue funcionando como acceso de respaldo.
+# rol="admin" -> permisos totales, incluida la gestión de otros usuarios.
+# rol="asistente" -> todo excepto crear/editar/borrar usuarios.
+class UsuarioDB(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    rol = Column(String, nullable=False, default="asistente")
+    activo = Column(Boolean, default=True, nullable=False)
+    fecha_creacion = Column(DateTime, default=datetime.now)
