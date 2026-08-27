@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.database import ConfiguracionDB, get_db
-from src.routers.admin_auth import require_admin_session
+from src.routers.admin_auth import require_permission
 from src.services.llm_service import CLAVE_SYSTEM_PROMPT, SYSTEM_PROMPT_POR_DEFECTO
 
 router = APIRouter(prefix="/api/admin/configuracion", tags=["Administración"])
@@ -15,7 +15,7 @@ class PromptIn(BaseModel):
 
 @router.get("/prompt")
 async def obtener_prompt(
-    db: Session = Depends(get_db), _admin: None = Depends(require_admin_session)
+    db: Session = Depends(get_db), _admin: None = Depends(require_permission("asistente"))
 ):
     fila = db.query(ConfiguracionDB).filter(ConfiguracionDB.clave == CLAVE_SYSTEM_PROMPT).first()
     return {
@@ -29,7 +29,7 @@ async def obtener_prompt(
 async def actualizar_prompt(
     payload: PromptIn,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("asistente")),
 ):
     fila = db.query(ConfiguracionDB).filter(ConfiguracionDB.clave == CLAVE_SYSTEM_PROMPT).first()
     if fila:
@@ -43,7 +43,7 @@ async def actualizar_prompt(
 
 @router.delete("/prompt")
 async def restaurar_prompt_por_defecto(
-    db: Session = Depends(get_db), _admin: None = Depends(require_admin_session)
+    db: Session = Depends(get_db), _admin: None = Depends(require_permission("asistente"))
 ):
     """Borra la personalización — vuelve a usar SYSTEM_PROMPT_POR_DEFECTO."""
     db.query(ConfiguracionDB).filter(ConfiguracionDB.clave == CLAVE_SYSTEM_PROMPT).delete()

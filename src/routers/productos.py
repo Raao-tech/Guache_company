@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.database import ProductoDetalDB, get_db
-from src.routers.admin_auth import require_admin_session
+from src.routers.admin_auth import require_permission
 
 router = APIRouter(tags=["Detal"])
 
@@ -47,7 +47,7 @@ async def listar_productos_publico(db: Session = Depends(get_db)):
     tags=["Administración"],
 )
 async def listar_productos_admin(
-    db: Session = Depends(get_db), _admin: None = Depends(require_admin_session)
+    db: Session = Depends(get_db), _admin: None = Depends(require_permission("productos"))
 ):
     return (
         db.query(ProductoDetalDB).order_by(ProductoDetalDB.orden, ProductoDetalDB.id).all()
@@ -62,7 +62,7 @@ async def listar_productos_admin(
 async def crear_producto(
     payload: ProductoDetalIn,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("productos")),
 ):
     producto = ProductoDetalDB(**payload.model_dump())
     db.add(producto)
@@ -80,7 +80,7 @@ async def actualizar_producto(
     producto_id: int,
     payload: ProductoDetalIn,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("productos")),
 ):
     producto = db.get(ProductoDetalDB, producto_id)
     if not producto:
@@ -98,7 +98,7 @@ async def actualizar_producto(
 async def eliminar_producto(
     producto_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("productos")),
 ):
     producto = db.get(ProductoDetalDB, producto_id)
     if not producto:

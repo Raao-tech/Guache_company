@@ -17,11 +17,11 @@
         <div class="logo">🌾 Panel Guache</div>
         <nav class="admin-nav">
             <a href="/admin/">Inicio</a>
-            <a href="/admin/productos.html">Catálogo Al Detal</a>
-            <a href="/admin/blog.html">Blog</a>
-            <a href="/admin/asistente.html">Asistente virtual</a>
-            <a href="/admin/conversaciones.html">Conversaciones</a>
-            <a href="/admin/usuarios.html" class="active">Usuarios</a>
+            <a href="/admin/productos.html" data-permiso="productos">Catálogo Al Detal</a>
+            <a href="/admin/blog.html" data-permiso="blog">Blog</a>
+            <a href="/admin/asistente.html" data-permiso="asistente">Asistente virtual</a>
+            <a href="/admin/conversaciones.html" data-permiso="conversaciones">Conversaciones</a>
+            <a href="/admin/usuarios.html" class="active" data-permiso="usuarios">Usuarios</a>
             <a href="/" target="_blank">Ver sitio ↗</a>
             <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
         </nav>
@@ -29,7 +29,7 @@
 
     <main class="admin-main" id="contenidoPagina">
         <h1>Usuarios del panel</h1>
-        <p class="admin-subtitle">Rol "admin" = permisos totales, incluida esta pantalla. Rol "asistente" = puede hacer todo lo demás (catálogo y blog), pero no puede crear, editar ni borrar usuarios.</p>
+        <p class="admin-subtitle">Marcá qué puede hacer cada usuario. El permiso "Usuarios" es el más sensible: quien lo tiene puede crear, editar y borrar cuentas, incluida la suya y las de otros administradores.</p>
 
         <div class="admin-grid">
             <div class="admin-panel">
@@ -55,20 +55,37 @@
                         <input type="text" id="clave" placeholder="Mínimo 4 caracteres">
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="rol">Rol</label>
-                            <select id="rol">
-                                <option value="asistente">Asistente</option>
-                                <option value="admin">Admin (permisos totales)</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="justify-content:center;">
-                            <label style="display:flex; align-items:center; gap:0.5rem; margin-top:1.6rem;">
-                                <input type="checkbox" id="activo" checked style="width:auto;">
-                                Cuenta activa
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Permisos</label>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="permisoProductos" style="width:auto;">
+                                Catálogo Al Detal
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="permisoBlog" style="width:auto;">
+                                Blog
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="permisoAsistente" style="width:auto;">
+                                Asistente virtual (prompt)
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="permisoConversaciones" style="width:auto;">
+                                Conversaciones
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="permisoUsuarios" style="width:auto;">
+                                Usuarios (crear/editar/borrar cuentas)
                             </label>
                         </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="checkbox" id="activo" checked style="width:auto;">
+                            Cuenta activa
+                        </label>
                     </div>
 
                     <div class="form-actions">
@@ -91,6 +108,36 @@
         const labelClave = document.getElementById("labelClave");
         const hintUsername = document.getElementById("hintUsername");
 
+        const CHECKBOXES_PERMISOS = {
+            productos: "permisoProductos",
+            blog: "permisoBlog",
+            asistente: "permisoAsistente",
+            conversaciones: "permisoConversaciones",
+            usuarios: "permisoUsuarios",
+        };
+
+        function leerPermisosDelFormulario() {
+            const permisos = {};
+            for (const [modulo, idCheckbox] of Object.entries(CHECKBOXES_PERMISOS)) {
+                permisos[modulo] = document.getElementById(idCheckbox).checked;
+            }
+            return permisos;
+        }
+
+        function nombresPermisosActivos(usuario) {
+            const nombres = {
+                permiso_productos: "Catálogo",
+                permiso_blog: "Blog",
+                permiso_asistente: "Asistente",
+                permiso_conversaciones: "Conversaciones",
+                permiso_usuarios: "Usuarios",
+            };
+            const activos = Object.entries(nombres)
+                .filter(([campo]) => usuario[campo])
+                .map(([, nombre]) => nombre);
+            return activos.length > 0 ? activos.join(", ") : "Sin permisos";
+        }
+
         function limpiarFormulario() {
             usuarioEditandoId = null;
             form.reset();
@@ -111,7 +158,9 @@
             inputUsername.value = usuario.username;
             inputUsername.disabled = true;
             hintUsername.style.display = "block";
-            document.getElementById("rol").value = usuario.rol;
+            for (const [modulo, idCheckbox] of Object.entries(CHECKBOXES_PERMISOS)) {
+                document.getElementById(idCheckbox).checked = usuario[`permiso_${modulo}`];
+            }
             document.getElementById("activo").checked = usuario.activo;
             labelClave.innerText = "Nueva clave (opcional)";
             inputClave.placeholder = "Dejar en blanco para no cambiarla";
@@ -136,7 +185,8 @@
                     (u) => `
                         <div class="admin-list-item ${u.activo ? "" : "inactivo"}">
                             <div class="admin-list-item-info">
-                                <h3>${escaparHtml(u.username)} <span class="badge-estado ${u.activo ? "" : "oculto"}">${u.rol === "admin" ? "Admin" : "Asistente"}${u.activo ? "" : " · inactivo"}</span></h3>
+                                <h3>${escaparHtml(u.username)} ${u.activo ? "" : '<span class="badge-estado oculto">Inactivo</span>'}</h3>
+                                <p>${escaparHtml(nombresPermisosActivos(u))}</p>
                             </div>
                             <div class="admin-list-item-actions">
                                 <button class="btn-icon" data-editar="${u.id}">✏️</button>
@@ -181,12 +231,12 @@
             boton.innerText = "Guardando...";
 
             try {
-                const rol = document.getElementById("rol").value;
+                const permisos = leerPermisosDelFormulario();
                 const activo = document.getElementById("activo").checked;
                 let respuesta;
 
                 if (usuarioEditandoId) {
-                    const payload = { rol, activo };
+                    const payload = { permisos, activo };
                     if (inputClave.value) payload.clave = inputClave.value;
                     respuesta = await apiFetch(`/api/admin/usuarios/${usuarioEditandoId}`, {
                         method: "PUT",
@@ -200,7 +250,7 @@
                         body: JSON.stringify({
                             username: inputUsername.value,
                             clave: inputClave.value,
-                            rol,
+                            permisos,
                             activo,
                         }),
                     });
@@ -224,14 +274,7 @@
 
         (async () => {
             const sesion = await requerirSesion();
-            if (!sesion) return;
-
-            if (sesion.rol !== "admin") {
-                document.getElementById("contenidoPagina").innerHTML =
-                    '<p class="empty-state">No tenés permiso para ver esta página. <a href="/admin/">Volver al inicio</a>.</p>';
-                return;
-            }
-
+            if (!sesion || !requerirPermiso(sesion, "usuarios")) return;
             cargarLista();
         })();
     </script>

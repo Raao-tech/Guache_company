@@ -15,8 +15,8 @@ def require_admin_session(request: Request) -> None:
     """
     Protege las rutas del panel de administración con la sesión creada
     en /api/admin/login (cookie firmada, ver SessionMiddleware en main.py).
-    Cualquier usuario logueado pasa esto (admin o asistente) — para
-    restringir a solo rol admin, ver `require_full_admin_role`.
+    Cualquier usuario logueado pasa esto — para exigir además el
+    permiso de un módulo puntual, ver `require_permission`.
     Distinto de `verificar_admin` (HTTP Basic) que sigue protegiendo
     GET /api/cotizaciones con la cuenta compartida de main.py.
     """
@@ -27,18 +27,27 @@ def require_admin_session(request: Request) -> None:
         )
 
 
-def require_full_admin_role(request: Request) -> None:
+PERMISOS_DISPONIBLES = ["productos", "blog", "asistente", "conversaciones", "usuarios"]
+
+
+def require_permission(modulo: str):
     """
-    Como `require_admin_session`, pero además exige rol="admin". Usarlo
-    para lo que un rol "asistente" no debería poder hacer — hoy, solo
-    la gestión de otros usuarios.
+    Como `require_admin_session`, pero además exige el permiso del
+    módulo indicado (uno de PERMISOS_DISPONIBLES) para el usuario
+    logueado. Usarlo en las rutas de administración de cada módulo —
+    ej. `Depends(require_permission("blog"))` en src/routers/blog.py.
     """
-    require_admin_session(request)
-    if request.session.get("rol") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Esta acción requiere permisos de administrador completo.",
-        )
+
+    def dependencia(request: Request) -> None:
+        require_admin_session(request)
+        permisos = request.session.get("permisos") or {}
+        if not permisos.get(modulo):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Esta acción requiere el permiso '{modulo}'.",
+            )
+
+    return dependencia
 
 
 class LoginRequest(BaseModel):
@@ -48,12 +57,13 @@ class LoginRequest(BaseModel):
 
 @router.post("/login")
 async def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    # 1. Cuenta compartida de respaldo (ADMIN_USERNAME/ADMIN_PASSWORD en .env)
+    # 1. Cuenta compartida de respaldo (ADMIN_USERNAME/ADMIN_PASSWORD en .env) —
+    # siempre tiene los 5 permisos, no depende de la tabla usuarios.
     if secrets.compare_digest(payload.usuario, config.ADMIN_USERNAME) and secrets.compare_digest(
         payload.clave, config.ADMIN_PASSWORD
     ):
         request.session["admin"] = True
-        request.session["rol"] = "admin"
+        request.session["permisos"] = {p: True for p in PERMISOS_DISPONIBLES}
         request.session["username"] = payload.usuario
         return {"exito": True}
 
@@ -65,7 +75,9 @@ async def login(payload: LoginRequest, request: Request, db: Session = Depends(g
     )
     if usuario and bcrypt.checkpw(payload.clave.encode(), usuario.password_hash.encode()):
         request.session["admin"] = True
-        request.session["rol"] = usuario.rol
+        request.session["permisos"] = {
+            p: getattr(usuario, f"permiso_{p}") for p in PERMISOS_DISPONIBLES
+        }
         request.session["username"] = usuario.username
         return {"exito": True}
 
@@ -85,5 +97,5 @@ async def whoami(request: Request):
     return {
         "autenticado": True,
         "username": request.session.get("username"),
-        "rol": request.session.get("rol"),
+        "permisos": request.session.get("permisos", {}),
     }

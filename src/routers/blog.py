@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.database import BlogPostDB, get_db
-from src.routers.admin_auth import require_admin_session
+from src.routers.admin_auth import require_permission
 
 router = APIRouter(tags=["Blog"])
 
@@ -77,7 +77,7 @@ async def obtener_post_publico(slug: str, db: Session = Depends(get_db)):
 # --- Administración (requiere sesión) ---
 @router.get("/api/admin/blog", response_model=list[BlogPostOut], tags=["Administración"])
 async def listar_posts_admin(
-    db: Session = Depends(get_db), _admin: None = Depends(require_admin_session)
+    db: Session = Depends(get_db), _admin: None = Depends(require_permission("blog"))
 ):
     return db.query(BlogPostDB).order_by(BlogPostDB.fecha_publicacion.desc()).all()
 
@@ -88,7 +88,7 @@ async def listar_posts_admin(
 async def obtener_post_admin(
     post_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("blog")),
 ):
     post = db.get(BlogPostDB, post_id)
     if not post:
@@ -100,7 +100,7 @@ async def obtener_post_admin(
 async def crear_post(
     payload: BlogPostIn,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("blog")),
 ):
     slug = slug_unico(db, generar_slug(payload.titulo))
     post = BlogPostDB(**payload.model_dump(), slug=slug)
@@ -117,7 +117,7 @@ async def actualizar_post(
     post_id: int,
     payload: BlogPostIn,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("blog")),
 ):
     post = db.get(BlogPostDB, post_id)
     if not post:
@@ -136,7 +136,7 @@ async def actualizar_post(
 async def eliminar_post(
     post_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("blog")),
 ):
     post = db.get(BlogPostDB, post_id)
     if not post:

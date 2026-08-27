@@ -17,11 +17,11 @@
         <div class="logo">🌾 Panel Guache</div>
         <nav class="admin-nav">
             <a href="/admin/">Inicio</a>
-            <a href="/admin/productos.html">Catálogo Al Detal</a>
-            <a href="/admin/blog.html" class="active">Blog</a>
-            <a href="/admin/asistente.html">Asistente virtual</a>
-            <a href="/admin/conversaciones.html">Conversaciones</a>
-            <a href="/admin/usuarios.html" data-solo-admin>Usuarios</a>
+            <a href="/admin/productos.html" data-permiso="productos">Catálogo Al Detal</a>
+            <a href="/admin/blog.html" class="active" data-permiso="blog">Blog</a>
+            <a href="/admin/asistente.html" data-permiso="asistente">Asistente virtual</a>
+            <a href="/admin/conversaciones.html" data-permiso="conversaciones">Conversaciones</a>
+            <a href="/admin/usuarios.html" data-permiso="usuarios">Usuarios</a>
             <a href="/" target="_blank">Ver sitio ↗</a>
             <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
         </nav>
@@ -226,7 +226,8 @@
         });
 
         (async () => {
-            await requerirSesion();
+            const sesion = await requerirSesion();
+            if (!sesion || !requerirPermiso(sesion, "blog")) return;
             cargarLista();
         })();
     </script>

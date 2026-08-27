@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.database import MensajeChatDB, get_db
-from src.routers.admin_auth import require_admin_session
+from src.routers.admin_auth import require_permission
 
 router = APIRouter(prefix="/api/admin/conversaciones", tags=["Administración"])
 
@@ -29,7 +29,7 @@ class ConversacionResumen(BaseModel):
 
 @router.get("", response_model=list[ConversacionResumen])
 async def listar_conversaciones(
-    db: Session = Depends(get_db), _admin: None = Depends(require_admin_session)
+    db: Session = Depends(get_db), _admin: None = Depends(require_permission("conversaciones"))
 ):
     # Se agrupa en Python, no con GROUP BY: a esta escala (una agroindustria
     # con tráfico moderado) es más simple y portable entre SQLite/Postgres
@@ -59,7 +59,7 @@ async def listar_conversaciones(
 async def obtener_conversacion(
     sesion_id: str,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_admin_session),
+    _admin: None = Depends(require_permission("conversaciones")),
 ):
     return (
         db.query(MensajeChatDB)

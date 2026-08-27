@@ -17,11 +17,11 @@
         <div class="logo">🌾 Panel Guache</div>
         <nav class="admin-nav">
             <a href="/admin/" class="active">Inicio</a>
-            <a href="/admin/productos.html">Catálogo Al Detal</a>
-            <a href="/admin/blog.html">Blog</a>
-            <a href="/admin/asistente.html">Asistente virtual</a>
-            <a href="/admin/conversaciones.html">Conversaciones</a>
-            <a href="/admin/usuarios.html" data-solo-admin>Usuarios</a>
+            <a href="/admin/productos.html" data-permiso="productos">Catálogo Al Detal</a>
+            <a href="/admin/blog.html" data-permiso="blog">Blog</a>
+            <a href="/admin/asistente.html" data-permiso="asistente">Asistente virtual</a>
+            <a href="/admin/conversaciones.html" data-permiso="conversaciones">Conversaciones</a>
+            <a href="/admin/usuarios.html" data-permiso="usuarios">Usuarios</a>
             <a href="/" target="_blank">Ver sitio ↗</a>
             <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
         </nav>
@@ -32,11 +32,11 @@
         <p class="admin-subtitle">Desde acá podés actualizar lo que se muestra en la página, sin tocar código.</p>
 
         <div class="card-grid cols-3">
-            <a href="/admin/productos.html" class="info-card" style="text-decoration:none;color:inherit;">
+            <a href="/admin/productos.html" class="info-card" data-permiso="productos" style="text-decoration:none;color:inherit;">
                 <h3>🛍️ Catálogo Al Detal</h3>
                 <p id="resumenProductos">Cargando...</p>
             </a>
-            <a href="/admin/blog.html" class="info-card" style="text-decoration:none;color:inherit;">
+            <a href="/admin/blog.html" class="info-card" data-permiso="blog" style="text-decoration:none;color:inherit;">
                 <h3>📝 Blog</h3>
                 <p id="resumenBlog">Cargando...</p>
             </a>
@@ -47,24 +47,29 @@
     <script src="/admin/admin.js"></script>
     <script>
         (async () => {
-            await requerirSesion();
+            const sesion = await requerirSesion();
+            if (!sesion) return;
 
-            try {
-                const productos = await (await apiFetch("/api/admin/productos")).json();
-                const activos = productos.filter((p) => p.activo).length;
-                document.getElementById("resumenProductos").innerText =
-                    `${productos.length} producto(s) — ${activos} visible(s) en la web`;
-            } catch (e) {
-                document.getElementById("resumenProductos").innerText = "No se pudo cargar.";
+            if (sesion.permisos.productos) {
+                try {
+                    const productos = await (await apiFetch("/api/admin/productos")).json();
+                    const activos = productos.filter((p) => p.activo).length;
+                    document.getElementById("resumenProductos").innerText =
+                        `${productos.length} producto(s) — ${activos} visible(s) en la web`;
+                } catch (e) {
+                    document.getElementById("resumenProductos").innerText = "No se pudo cargar.";
+                }
             }
 
-            try {
-                const posts = await (await apiFetch("/api/admin/blog")).json();
-                const publicados = posts.filter((p) => p.publicado).length;
-                document.getElementById("resumenBlog").innerText =
-                    `${posts.length} artículo(s) — ${publicados} publicado(s)`;
-            } catch (e) {
-                document.getElementById("resumenBlog").innerText = "No se pudo cargar.";
+            if (sesion.permisos.blog) {
+                try {
+                    const posts = await (await apiFetch("/api/admin/blog")).json();
+                    const publicados = posts.filter((p) => p.publicado).length;
+                    document.getElementById("resumenBlog").innerText =
+                        `${posts.length} artículo(s) — ${publicados} publicado(s)`;
+                } catch (e) {
+                    document.getElementById("resumenBlog").innerText = "No se pudo cargar.";
+                }
             }
         })();
     </script>

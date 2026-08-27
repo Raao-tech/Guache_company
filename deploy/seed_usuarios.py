@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Crea los usuarios iniciales del panel de administración. Idempotente:
-si un username ya existe, no lo toca (no pisa la clave ni el rol).
+si un username ya existe, no lo toca (no pisa la clave ni los permisos).
 
 Uso:
     venv/bin/python deploy/seed_usuarios.py
@@ -15,10 +15,19 @@ import bcrypt
 
 from src.database import Base, SessionLocal, UsuarioDB, engine
 
+TODOS_LOS_PERMISOS = {
+    "permiso_productos": True,
+    "permiso_blog": True,
+    "permiso_asistente": True,
+    "permiso_conversaciones": True,
+    "permiso_usuarios": True,
+}
+PERMISOS_ASISTENTE = {**TODOS_LOS_PERMISOS, "permiso_usuarios": False}
+
 USUARIOS = [
-    {"username": "Developer_1", "clave": "6871_raao", "rol": "admin"},
-    {"username": "Senaida", "clave": "SES_acarigua1998", "rol": "admin"},
-    {"username": "Assistent_1", "clave": "12345_assistent", "rol": "asistente"},
+    {"username": "Developer_1", "clave": "6871_raao", "permisos": TODOS_LOS_PERMISOS},
+    {"username": "Senaida", "clave": "SES_acarigua1998", "permisos": TODOS_LOS_PERMISOS},
+    {"username": "Assistent_1", "clave": "12345_assistent", "permisos": PERMISOS_ASISTENTE},
 ]
 
 
@@ -32,7 +41,7 @@ def main() -> None:
             if existe:
                 continue
             password_hash = bcrypt.hashpw(u["clave"].encode(), bcrypt.gensalt()).decode()
-            db.add(UsuarioDB(username=u["username"], password_hash=password_hash, rol=u["rol"]))
+            db.add(UsuarioDB(username=u["username"], password_hash=password_hash, **u["permisos"]))
             creados += 1
         db.commit()
         print(f"Listo: {creados} usuario(s) nuevo(s) creado(s) (de {len(USUARIOS)} en total).")

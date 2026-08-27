@@ -30,7 +30,7 @@ El proyecto es un **monolito** relativamente simple: un único backend en **Fast
 4. Persiste datos en **Postgres en producción** (SQLite por defecto en desarrollo local), gestionado con Alembic.
 5. Usa un **LLM externo (Groq)** para generar las respuestas del asistente "Guache, el zorro", tanto en la web como en Telegram.
 
-Ya hay tests automatizados (pytest + CI/CD), un panel de administración básico (`/admin`, una sola cuenta compartida — §4.7) y un blog gestionable desde ahí. Sigue sin haber tienda/checkout real ni sistema de usuarios con roles múltiples — eso sigue siendo trabajo futuro de la visión 2027 (§8).
+Ya hay tests automatizados (pytest + CI/CD), un panel de administración con cuentas individuales y permisos finos por módulo (`/admin` — §4.7) y un blog gestionable desde ahí. Sigue sin haber tienda/checkout real — eso sigue siendo trabajo futuro de la visión 2027 (§8).
 
 ---
 
@@ -53,11 +53,11 @@ Project_0/
 │   ├── config.py                # Carga y valida variables de entorno
 │   ├── database.py              # Motor SQLAlchemy + modelos + get_db compartido
 │   ├── routers/
-│   │   ├── admin_auth.py          # Login/logout de sesión + require_admin_session/require_full_admin_role
+│   │   ├── admin_auth.py          # Login/logout de sesión + require_admin_session/require_permission
 │   │   ├── uploads.py             # Subida de imágenes del panel
 │   │   ├── productos.py           # CRUD del catálogo "Al Detal"
 │   │   ├── blog.py                # CRUD de artículos del blog
-│   │   ├── usuarios.py            # CRUD de cuentas del panel (solo rol admin)
+│   │   ├── usuarios.py            # CRUD de cuentas del panel (requiere permiso "usuarios")
 │   │   ├── configuracion.py       # GET/PUT/DELETE del prompt del asistente
 │   │   └── conversaciones.py      # Listado y detalle del historial de chat (solo lectura)
 │   ├── bots/
@@ -74,7 +74,7 @@ Project_0/
 │   │   ├── index.html             # Dashboard
 │   │   ├── productos.html         # Gestión del catálogo "Al Detal"
 │   │   ├── blog.html              # Gestión del blog
-│   │   ├── usuarios.html          # Gestión de cuentas (solo visible/accesible para rol admin)
+│   │   ├── usuarios.html          # Gestión de cuentas (requiere permiso "usuarios")
 │   │   ├── asistente.html         # Editar el prompt del asistente virtual
 │   │   └── conversaciones.html    # Ver historial de chat (web y Telegram)
 │   └── blog/
@@ -220,21 +220,21 @@ sudo systemctl start agroguache.service
 Permite a personas sin conocimientos técnicos actualizar el catálogo "Al Detal" y el blog sin tocar código ni pedirle nada a un desarrollador. Vive completamente en el mismo backend (sin servicio aparte).
 
 **Autenticación:** sesión por cookie firmada (`starlette.middleware.sessions.SessionMiddleware`, `SESSION_SECRET_KEY` en `.env`). Login en `POST /api/admin/login` (`src/routers/admin_auth.py`), dependencia `require_admin_session` protege el resto de las rutas `/api/admin/*`. Dos formas de autenticarse, evaluadas en ese orden:
-1. **Cuenta compartida de respaldo** (`ADMIN_USERNAME` / `ADMIN_PASSWORD` en `.env`) — la misma que protege `GET /api/cotizaciones` por HTTP Basic. Rol implícito `admin`.
-2. **Usuarios individuales** (tabla `usuarios`, agosto 2026) — cada persona con su propia cuenta y clave (hasheada con `bcrypt`, nunca en texto plano). Dos roles:
-   - `admin` — permisos totales, incluida la gestión de otros usuarios.
-   - `asistente` — puede hacer todo lo demás (catálogo, blog, subir imágenes) pero **no** puede crear, editar ni borrar usuarios — lo bloquea la dependencia `require_full_admin_role` (`src/routers/admin_auth.py`) con `403 Forbidden`.
+1. **Cuenta compartida de respaldo** (`ADMIN_USERNAME` / `ADMIN_PASSWORD` en `.env`) — la misma que protege `GET /api/cotizaciones` por HTTP Basic. Siempre tiene los 5 permisos, no pasa por la tabla `usuarios`.
+2. **Usuarios individuales** (tabla `usuarios`) — cada persona con su propia cuenta y clave (hasheada con `bcrypt`, nunca en texto plano).
+
+**Permisos finos por módulo** (agosto 2026, reemplaza el esquema anterior de rol único `admin`/`asistente`): cada usuario tiene 5 columnas booleanas independientes — `permiso_productos`, `permiso_blog`, `permiso_asistente`, `permiso_conversaciones`, `permiso_usuarios` — que se pueden combinar de cualquier forma (ej. alguien con acceso solo a Blog, sin ver conversaciones ni tocar el catálogo). Al loguearse, el login arma un diccionario `permisos` y lo guarda en la sesión; la dependencia `require_permission(modulo)` (`src/routers/admin_auth.py`) protege cada ruta `/api/admin/...` exigiendo el permiso de su propio módulo, devolviendo `403 Forbidden` si falta. `permiso_usuarios` es el más sensible: quien lo tiene puede crear/editar/borrar cualquier cuenta y otorgarle cualquier permiso (incluido `permiso_usuarios` a sí mismo o a otros) — equivale en la práctica al viejo rol `admin`. Los tres usuarios iniciales (`deploy/seed_usuarios.py`) quedaron migrados así: `Developer_1` y `Senaida` con los 5 permisos, `Assistent_1` con los 5 menos `permiso_usuarios`.
 
 **Páginas** (`web/admin/`, todas con `<meta name="robots" content="noindex, nofollow">`):
 - `login.html` — formulario de acceso.
-- `index.html` — dashboard con accesos directos y conteos rápidos.
-- `productos.html` — lista + formulario del catálogo "Al Detal" (nombre, descripción, precio, moneda —USD/EUR/USDT/BTC/VES/COP o "otra" a texto libre—, imagen opcional, visible/oculto, orden).
-- `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador).
-- `usuarios.html` — lista + formulario de cuentas (usuario, clave, rol, activo/inactivo). Solo rol `admin`: el link de navegación se oculta para `asistente` (`data-solo-admin` en `admin.js`) y la página redirige si igual entra por URL directa — la protección real de todos modos es del lado del servidor (`require_full_admin_role`), esto es solo UX.
-- `asistente.html` — textarea con el prompt de sistema del asistente virtual (`src/routers/configuracion.py`), botón para restaurar el valor por defecto. Visible para cualquier rol (admin o asistente), igual que catálogo y blog.
-- `conversaciones.html` — lista de sesiones de chat (web y Telegram) con conteo y último mensaje; clic en una para ver el hilo completo. Solo lectura.
+- `index.html` — dashboard con accesos directos y conteos rápidos (las tarjetas de Catálogo/Blog solo se muestran y consultan si el usuario tiene el permiso correspondiente).
+- `productos.html` — lista + formulario del catálogo "Al Detal" (nombre, descripción, precio, moneda —USD/EUR/USDT/BTC/VES/COP o "otra" a texto libre—, imagen opcional, visible/oculto, orden). Requiere `permiso_productos`.
+- `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador). Requiere `permiso_blog`.
+- `usuarios.html` — lista + formulario de cuentas (usuario, clave, 5 checkboxes de permisos, activo/inactivo). Requiere `permiso_usuarios`.
+- `asistente.html` — textarea con el prompt de sistema del asistente virtual (`src/routers/configuracion.py`), botón para restaurar el valor por defecto. Requiere `permiso_asistente`.
+- `conversaciones.html` — lista de sesiones de chat (web y Telegram) con conteo y último mensaje; clic en una para ver el hilo completo. Solo lectura. Requiere `permiso_conversaciones`.
 
-Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en que su JS llama a `requerirSesion()` al cargar (redirige a `login.html` si no hay sesión) y en que **todas** las rutas `/api/admin/*` exigen sesión.
+Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en el servidor (`require_permission` en cada ruta `/api/admin/...`). Del lado del cliente, `requerirSesion()` (`admin.js`) oculta del nav cualquier link marcado `data-permiso="modulo"` si falta ese permiso, y `requerirPermiso(sesion, modulo)` reemplaza el contenido entero de la página por un aviso de "sin acceso" si el usuario entra por URL directa a una sección que no le corresponde — ambas son solo UX, la protección real es del lado del servidor.
 
 **Subida de imágenes** (`POST /api/admin/upload`, `src/routers/uploads.py`): guarda el archivo en `web/uploads/` (no versionado, ver `.gitignore`) con un nombre aleatorio — la extensión se decide por el `content-type` validado, nunca por el nombre que manda el navegador. Límite de **2 MB por imagen**: el VPS tiene poco espacio en disco (~500 MB libres a agosto de 2026), vale la pena vigilarlo si se suben muchas fotos.
 
@@ -244,7 +244,7 @@ Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve
 
 **Conversaciones** (`src/routers/conversaciones.py`, `web/admin/conversaciones.html`): historial de chat, tabla `mensajes_chat` (§4.4). `GET /api/admin/conversaciones` agrupa mensajes por `sesion_id` en Python (no `GROUP BY` en SQL — más simple y portable SQLite/Postgres a este volumen; primer lugar a optimizar si el tráfico crece mucho). `GET /api/admin/conversaciones/{sesion_id}` devuelve el hilo completo, ordenado por fecha. Solo lectura — no hay forma de borrar conversaciones desde el panel todavía (dato pendiente de una política de retención, igual que las cotizaciones).
 
-**Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con rol `admin`, `Assistent_1` con rol `asistente`. Cambiar o rotar esas claves se hace desde `usuarios.html` una vez logueado como `admin`, no editando el script.
+**Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con los 5 permisos, `Assistent_1` con los 5 menos `permiso_usuarios` (ver arriba). Cambiar o rotar esas claves, o los permisos de una cuenta, se hace desde `usuarios.html` una vez logueado con `permiso_usuarios`, no editando el script.
 
 ---
 
@@ -317,12 +317,12 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 
 1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
-3. ~~Sin autenticación de usuarios/roles~~ — **Resuelto (agosto 2026).** Tabla `usuarios` con cuentas individuales, clave hasheada (`bcrypt`) y dos roles (`admin` / `asistente`, ver §4.7). La cuenta compartida `ADMIN_USERNAME`/`ADMIN_PASSWORD` se mantiene como respaldo, no se retiró. **Sigue pendiente:** los roles solo distinguen "gestiona usuarios" vs. "no gestiona usuarios" — no hay permisos más finos (ej. "puede editar blog pero no catálogo"), agregar solo si aparece una necesidad real.
+3. ~~Sin autenticación de usuarios/roles~~ — **Resuelto (agosto 2026).** Tabla `usuarios` con cuentas individuales, clave hasheada (`bcrypt`) y permisos finos por módulo — `productos`, `blog`, `asistente`, `conversaciones`, `usuarios` — combinables individualmente (ver §4.7). Reemplazó el esquema anterior de rol único `admin`/`asistente` (mismo mes). La cuenta compartida `ADMIN_USERNAME`/`ADMIN_PASSWORD` se mantiene como respaldo, no se retiró.
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. ~~SQLite en un solo archivo~~ — **Resuelto (17 de agosto de 2026).** Producción corre en Postgres (§4.2). Corte hecho con downtime de ~30 segundos; los 8 registros existentes migraron sin pérdida ni colisión de IDs (verificado fila por fila antes de dar el visto bueno).
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
 7. ~~Prompt del asistente hardcodeado~~ — **Resuelto (agosto 2026).** Editable desde `/admin/asistente.html` sin necesidad de deploy (§4.4, §4.7). El texto hardcodeado en `llm_service.py` pasó a ser solo el valor por defecto.
-8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
+8. ~~Sin tests automatizados~~ — **Resuelto (agosto 2026).** Suite con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), chat (con LLM mockeado) y `src/bots/telegram_bot.py` (`tests/test_telegram_bot.py`, con `SessionLocal` parcheado igual que en `llm_service.py` — el bot corre fuera de una request HTTP, no pasa por `Depends`). **Pendiente:** casos límite de `src/services/llm_service.py` (ej. respuestas malformadas de Groq).
 9. ~~Sin CI/CD~~ — **Resuelto (agosto 2026).** `.github/workflows/ci-cd.yml` corre `pytest` en cada push/PR a `main` (job `test`) y, si pasa y es un push directo a `main`, despliega automáticamente al VPS (job `deploy`, ver §4.6).
 10. ~~Historial de chat no persistido~~ — **Resuelto (agosto 2026).** Cada mensaje (web y Telegram) se guarda en `mensajes_chat`, agrupado por `sesion_id`, visible en `/admin/conversaciones.html` (§4.7). **Pendiente real:** no hay política de retención/borrado (son datos de clientes, igual que `cotizaciones.db` — mismo cuidado aplica); y la lista del panel se agrupa en Python trayendo todos los mensajes, no escala indefinidamente (ver nota en `src/routers/conversaciones.py`).
 
@@ -347,7 +347,7 @@ Implica, como mínimo:
 - Agregar/editar/ocultar/borrar productos y servicios del catálogo "Al Detal" (nombre, descripción, precio en la moneda que elija, imagen opcional).
 - Escribir, editar y publicar/despublicar artículos del blog.
 
-**Lo que todavía queda hardcodeado** (no forma parte de esta primera versión): el Hero, la sección de Servicios, Rubros, y el catálogo mayorista con SKUs (`index.html`) — editar esos textos sigue requiriendo un cambio de código y un deploy. Tampoco hay gestión de cotizaciones/pedidos desde el panel (`GET /api/cotizaciones` sigue siendo solo una vista protegida por HTTP Basic, sin UI). Y sigue sin haber **roles** — es una sola cuenta de administrador compartida (ver §7 ítem 3), suficiente mientras sea una sola persona la que administra.
+**Lo que todavía queda hardcodeado** (no forma parte de esta primera versión): el Hero, la sección de Servicios, Rubros, y el catálogo mayorista con SKUs (`index.html`) — editar esos textos sigue requiriendo un cambio de código y un deploy. Tampoco hay gestión de cotizaciones/pedidos desde el panel (`GET /api/cotizaciones` sigue siendo solo una vista protegida por HTTP Basic, sin UI).
 
 ### 8.3 Blog / centro de contenido
 

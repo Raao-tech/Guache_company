@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.database import UsuarioDB, get_db
-from src.routers.admin_auth import require_full_admin_role
+from src.routers.admin_auth import PERMISOS_DISPONIBLES, require_permission
 
 router = APIRouter(prefix="/api/admin/usuarios", tags=["Administración"])
 
@@ -16,15 +16,23 @@ def hashear_clave(clave: str) -> str:
     return bcrypt.hashpw(clave.encode(), bcrypt.gensalt()).decode()
 
 
+class PermisosIn(BaseModel):
+    productos: bool = False
+    blog: bool = False
+    asistente: bool = False
+    conversaciones: bool = False
+    usuarios: bool = False
+
+
 class UsuarioIn(BaseModel):
     username: str = Field(..., min_length=2)
     clave: str = Field(..., min_length=4)
-    rol: str = Field(..., pattern="^(admin|asistente)$")
+    permisos: PermisosIn = PermisosIn()
     activo: bool = True
 
 
 class UsuarioUpdate(BaseModel):
-    rol: str = Field(..., pattern="^(admin|asistente)$")
+    permisos: PermisosIn = PermisosIn()
     activo: bool = True
     clave: Optional[str] = Field(None, min_length=4)  # solo si se quiere cambiar
 
@@ -32,18 +40,27 @@ class UsuarioUpdate(BaseModel):
 class UsuarioOut(BaseModel):
     id: int
     username: str
-    rol: str
+    permiso_productos: bool
+    permiso_blog: bool
+    permiso_asistente: bool
+    permiso_conversaciones: bool
+    permiso_usuarios: bool
     activo: bool
     fecha_creacion: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
 
-# Todas las rutas acá requieren rol admin completo — un asistente no
-# puede ver ni gestionar esta lista.
+def _aplicar_permisos(usuario: UsuarioDB, permisos: PermisosIn) -> None:
+    for modulo in PERMISOS_DISPONIBLES:
+        setattr(usuario, f"permiso_{modulo}", getattr(permisos, modulo))
+
+
+# Todas las rutas acá requieren el permiso "usuarios" — quien lo tiene
+# puede además otorgárselo a otra cuenta (equivale al viejo rol admin).
 @router.get("", response_model=list[UsuarioOut])
 async def listar_usuarios(
-    db: Session = Depends(get_db), _admin: None = Depends(require_full_admin_role)
+    db: Session = Depends(get_db), _admin: None = Depends(require_permission("usuarios"))
 ):
     return db.query(UsuarioDB).order_by(UsuarioDB.username).all()
 
@@ -52,7 +69,7 @@ async def listar_usuarios(
 async def crear_usuario(
     payload: UsuarioIn,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_full_admin_role),
+    _admin: None = Depends(require_permission("usuarios")),
 ):
     existe = db.query(UsuarioDB).filter(UsuarioDB.username == payload.username).first()
     if existe:
@@ -61,9 +78,9 @@ async def crear_usuario(
     usuario = UsuarioDB(
         username=payload.username,
         password_hash=hashear_clave(payload.clave),
-        rol=payload.rol,
         activo=payload.activo,
     )
+    _aplicar_permisos(usuario, payload.permisos)
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
@@ -75,13 +92,13 @@ async def actualizar_usuario(
     usuario_id: int,
     payload: UsuarioUpdate,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_full_admin_role),
+    _admin: None = Depends(require_permission("usuarios")),
 ):
     usuario = db.get(UsuarioDB, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
-    usuario.rol = payload.rol
+    _aplicar_permisos(usuario, payload.permisos)
     usuario.activo = payload.activo
     if payload.clave:
         usuario.password_hash = hashear_clave(payload.clave)
@@ -95,7 +112,7 @@ async def actualizar_usuario(
 async def eliminar_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_full_admin_role),
+    _admin: None = Depends(require_permission("usuarios")),
 ):
     usuario = db.get(UsuarioDB, usuario_id)
     if not usuario:

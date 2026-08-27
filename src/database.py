@@ -99,16 +99,25 @@ class BlogPostDB(Base):
 
 # Usuarios con acceso al panel de administración. Complementa (no
 # reemplaza) la cuenta compartida ADMIN_USERNAME/ADMIN_PASSWORD de
-# src/config.py, que sigue funcionando como acceso de respaldo.
-# rol="admin" -> permisos totales, incluida la gestión de otros usuarios.
-# rol="asistente" -> todo excepto crear/editar/borrar usuarios.
+# src/config.py, que sigue funcionando como acceso de respaldo (esa
+# cuenta siempre tiene los 5 permisos, no pasa por esta tabla).
+# Permisos finos por módulo en vez de un rol único admin/asistente: cada
+# usuario individual puede tener cualquier combinación. permiso_usuarios
+# es el más sensible — quien lo tiene puede crear otros usuarios y
+# otorgarles cualquier permiso (incluido este mismo), así que equivale
+# en la práctica al viejo rol "admin". Ver `require_permission` en
+# src/routers/admin_auth.py.
 class UsuarioDB(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    rol = Column(String, nullable=False, default="asistente")
+    permiso_productos = Column(Boolean, nullable=False, default=False)
+    permiso_blog = Column(Boolean, nullable=False, default=False)
+    permiso_asistente = Column(Boolean, nullable=False, default=False)
+    permiso_conversaciones = Column(Boolean, nullable=False, default=False)
+    permiso_usuarios = Column(Boolean, nullable=False, default=False)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime, default=datetime.now)
 

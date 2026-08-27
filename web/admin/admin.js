@@ -10,8 +10,9 @@ async function apiFetch(url, opciones = {}) {
 }
 
 // Llamar al cargar cualquier página protegida del panel (todas menos login.html).
-// Devuelve {username, rol} y oculta cualquier elemento marcado
-// data-solo-admin si el usuario logueado no tiene rol "admin" (ej. Assistent_1).
+// Devuelve {username, permisos} y oculta cualquier elemento marcado
+// data-permiso="modulo" si el usuario logueado no tiene ese permiso
+// (ej. data-permiso="usuarios" para el link a Usuarios).
 async function requerirSesion() {
     const respuesta = await fetch("/api/admin/whoami", { credentials: "same-origin" });
     const data = await respuesta.json();
@@ -20,11 +21,23 @@ async function requerirSesion() {
         return null;
     }
 
-    document.querySelectorAll("[data-solo-admin]").forEach((el) => {
-        if (data.rol !== "admin") el.style.display = "none";
+    document.querySelectorAll("[data-permiso]").forEach((el) => {
+        if (!data.permisos[el.dataset.permiso]) el.style.display = "none";
     });
 
     return data;
+}
+
+// Para usar al principio de una página cuyo contenido entero requiere un
+// permiso puntual (no solo ocultar un link de nav) — ej. productos.html
+// necesita "productos". Si falta, reemplaza #contenidoPagina con un aviso
+// y devuelve false.
+function requerirPermiso(sesion, modulo) {
+    if (sesion.permisos[modulo]) return true;
+    const contenedor = document.getElementById("contenidoPagina") || document.querySelector("main.admin-main");
+    contenedor.innerHTML =
+        '<h1>Sin acceso</h1><p class="empty-state">No tenés permiso para ver esta página. <a href="/admin/">Volver al inicio</a>.</p>';
+    return false;
 }
 
 async function cerrarSesion() {
