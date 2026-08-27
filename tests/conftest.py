@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 import main
 from src import config
 from src.database import Base, get_db
+from src.services import llm_service
 
 
 @pytest.fixture()
@@ -31,6 +32,13 @@ def client(tmp_path, monkeypatch):
             db.close()
 
     main.app.dependency_overrides[get_db] = override_get_db
+
+    # llm_service.obtener_system_prompt() usa SessionLocal directo (no
+    # Depends), porque también lo llama el bot de Telegram fuera de una
+    # request HTTP — dependency_overrides no lo intercepta, así que hay
+    # que parchear la referencia que ya importó ese módulo.
+    monkeypatch.setattr(llm_service, "SessionLocal", TestSessionLocal)
+
     with TestClient(main.app) as test_client:
         yield test_client
     main.app.dependency_overrides.clear()

@@ -1,11 +1,17 @@
 from groq import AsyncGroq
 from src.config import GROQ_API_KEY
+from src.database import ConfiguracionDB, SessionLocal
 
 #inicializar el cliente oficial de Groq
 client = AsyncGroq(api_key=GROQ_API_KEY)
 
-# Contexto inicial para el asistente (LLM)
-SYSTEM_PROMPT = """
+CLAVE_SYSTEM_PROMPT = "system_prompt"
+
+# Valor por defecto: se usa mientras nadie lo edite desde el panel de
+# administración (/admin/asistente.html -> src/routers/configuracion.py).
+# No hace falta un deploy nuevo para cambiar el tono/catálogo del
+# asistente — antes sí hacía falta, esto era deuda técnica documentada.
+SYSTEM_PROMPT_POR_DEFECTO = """
 Eres el asistente virtual oficial de "Agroindustria Guache, C.A.", una fábrica y planta agroindustrial fundada en 1998 ubicada en la Zona Industrial de Acarigua, Estado Portuguesa, Venezuela.
 
 TU ROL Y OBJETIVO:
@@ -57,6 +63,24 @@ REGLAS DE RESPUESTA:
 - Mantén las respuestas claras y estructuradas (usa viñetas o negrillas cuando muestres opciones).
 """
 
+
+def obtener_system_prompt() -> str:
+    """
+    Devuelve el prompt configurado desde el panel si existe y no está
+    vacío; si no, el valor por defecto. Sesión propia y de corta vida
+    (no depende de FastAPI Depends) porque también la usa el bot de
+    Telegram, que corre fuera de una request HTTP.
+    """
+    db = SessionLocal()
+    try:
+        fila = db.query(ConfiguracionDB).filter(ConfiguracionDB.clave == CLAVE_SYSTEM_PROMPT).first()
+        if fila and fila.valor.strip():
+            return fila.valor
+        return SYSTEM_PROMPT_POR_DEFECTO
+    finally:
+        db.close()
+
+
 async def generar_respuesta_llm(prompt_usuario: str) -> str:
     """
     Envía el mensaje del usuario a Groq y devuelve el texto generado.
@@ -67,7 +91,7 @@ async def generar_respuesta_llm(prompt_usuario: str) -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": SYSTEM_PROMPT,
+                    "content": obtener_system_prompt(),
                 },
                 {
                     "role": "user",

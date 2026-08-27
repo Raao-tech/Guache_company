@@ -111,3 +111,15 @@ class UsuarioDB(Base):
     rol = Column(String, nullable=False, default="asistente")
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime, default=datetime.now)
+
+
+# Configuración editable desde el panel (clave/valor genérico). Hoy solo
+# se usa para el system_prompt del asistente virtual (ver
+# src/services/llm_service.py) — si no hay fila para una clave, el
+# código que la lee cae a un valor por defecto hardcodeado.
+class ConfiguracionDB(Base):
+    __tablename__ = "configuracion"
+
+    clave = Column(String, primary_key=True)
+    valor = Column(Text, nullable=False)
+    fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)

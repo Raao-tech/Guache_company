@@ -57,7 +57,8 @@ Project_0/
 │   │   ├── uploads.py             # Subida de imágenes del panel
 │   │   ├── productos.py           # CRUD del catálogo "Al Detal"
 │   │   ├── blog.py                # CRUD de artículos del blog
-│   │   └── usuarios.py            # CRUD de cuentas del panel (solo rol admin)
+│   │   ├── usuarios.py            # CRUD de cuentas del panel (solo rol admin)
+│   │   └── configuracion.py       # GET/PUT/DELETE del prompt del asistente
 │   ├── bots/
 │   │   └── telegram_bot.py      # Bot de Telegram (python-telegram-bot)
 │   └── services/
@@ -72,7 +73,8 @@ Project_0/
 │   │   ├── index.html             # Dashboard
 │   │   ├── productos.html         # Gestión del catálogo "Al Detal"
 │   │   ├── blog.html              # Gestión del blog
-│   │   └── usuarios.html          # Gestión de cuentas (solo visible/accesible para rol admin)
+│   │   ├── usuarios.html          # Gestión de cuentas (solo visible/accesible para rol admin)
+│   │   └── asistente.html         # Editar el prompt del asistente virtual
 │   └── blog/
 │       ├── index.html             # Listado de artículos (dinámico, fetch a /api/blog/posts)
 │       └── post.html              # Plantilla única para cualquier artículo (dinámico por slug)
@@ -137,14 +139,14 @@ El bot comparte lógica y prompt con el chat de la web — hoy es, en esencia, e
 
 ### 4.4 Servicio LLM — `src/services/llm_service.py`
 
-Usa el cliente oficial de **Groq** (`AsyncGroq`), modelo `openai/gpt-oss-20b`. El prompt de sistema (`SYSTEM_PROMPT`) define:
+Usa el cliente oficial de **Groq** (`AsyncGroq`), modelo `openai/gpt-oss-20b`. El prompt de sistema define:
 
 - Identidad del asistente: "Guache", asistente comercial de Agroindustria Guache C.A. (fundada 1998, Acarigua, Portuguesa).
 - Datos operativos de planta (capacidad, horarios, contacto).
 - Catálogo de productos con SKUs (harinas, aceites, alimento balanceado, agroinsumos, subproductos).
 - Reglas de tono y de manejo de precios (siempre remitir a cotización, nunca dar precio fijo).
 
-> ⚠️ **Nota para quien continúe el proyecto:** este `SYSTEM_PROMPT` describe el catálogo B2B/mayorista actual (harinas, alimento balanceado a granel). Es contenido **hardcodeado en el código**, no editable sin un despliegue. A medida que avance la estrategia de detal (España/Colombia) y el panel de administración (§6.2), este prompt debería poder actualizarse sin tocar código — hoy es una limitación conocida, no un diseño final.
+**Editable desde el panel (agosto 2026):** `SYSTEM_PROMPT_POR_DEFECTO` en este archivo es solo el valor de arranque. `obtener_system_prompt()` primero busca una fila en la tabla `configuracion` (clave `system_prompt`, editable en `/admin/asistente.html` → `src/routers/configuracion.py`); si no hay ninguna o está vacía, usa el default. Se lee en cada mensaje (sin caché) — un cambio guardado en el panel aplica de inmediato, sin deploy, tanto en el chat web como en Telegram. Esta función abre su propia sesión de BD con `SessionLocal` directo (no `Depends`), porque también la llama el bot de Telegram, que corre fuera de una request HTTP.
 
 > ⚠️ **Riesgo conocido — modelos de Groq cambian con el tiempo:** el 17 de agosto de 2026 el bot dejó de responder porque Groq dio de baja `llama-3.1-8b-instant` (el modelo usado hasta ese momento) — devolvía `404 model_not_found`. Se reemplazó por `openai/gpt-oss-20b` tras probarlo contra el `SYSTEM_PROMPT` real (formato, regla de "nunca dar precio fijo", velocidad ~1s). El nombre del modelo está hardcodeado en `llm_service.py`; si el bot vuelve a devolver el mensaje genérico de error ("hay una revolución de manadas Guache..."), lo primero a revisar es si Groq deprecó el modelo actual — `client.models.list()` del SDK de Groq devuelve los modelos vigentes en la cuenta.
 
@@ -225,12 +227,15 @@ Permite a personas sin conocimientos técnicos actualizar el catálogo "Al Detal
 - `productos.html` — lista + formulario del catálogo "Al Detal" (nombre, descripción, precio, moneda —USD/EUR/USDT/BTC/VES/COP o "otra" a texto libre—, imagen opcional, visible/oculto, orden).
 - `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador).
 - `usuarios.html` — lista + formulario de cuentas (usuario, clave, rol, activo/inactivo). Solo rol `admin`: el link de navegación se oculta para `asistente` (`data-solo-admin` en `admin.js`) y la página redirige si igual entra por URL directa — la protección real de todos modos es del lado del servidor (`require_full_admin_role`), esto es solo UX.
+- `asistente.html` — textarea con el prompt de sistema del asistente virtual (`src/routers/configuracion.py`), botón para restaurar el valor por defecto. Visible para cualquier rol (admin o asistente), igual que catálogo y blog.
 
 Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en que su JS llama a `requerirSesion()` al cargar (redirige a `login.html` si no hay sesión) y en que **todas** las rutas `/api/admin/*` exigen sesión.
 
 **Subida de imágenes** (`POST /api/admin/upload`, `src/routers/uploads.py`): guarda el archivo en `web/uploads/` (no versionado, ver `.gitignore`) con un nombre aleatorio — la extensión se decide por el `content-type` validado, nunca por el nombre que manda el navegador. Límite de **2 MB por imagen**: el VPS tiene poco espacio en disco (~500 MB libres a agosto de 2026), vale la pena vigilarlo si se suben muchas fotos.
 
 **CRUD administrable** (`src/routers/productos.py`, `src/routers/blog.py`, `src/routers/usuarios.py`): endpoints públicos de solo lectura (`GET /api/detal/productos`, `GET /api/blog/posts[/​{slug}]` — solo devuelven ítems activos/publicados) y endpoints `/api/admin/...` con CRUD completo. El slug de un post se genera una sola vez al crearlo (a partir del título, desambiguado con `-2`, `-3`... si se repite) y **no cambia** aunque se edite el título después — mantiene estables los links ya compartidos.
+
+**Configuración del asistente** (`src/routers/configuracion.py`): `GET/PUT/DELETE /api/admin/configuracion/prompt` — lee/escribe la tabla `configuracion` (clave/valor genérico, hoy solo se usa esta clave). Ver §4.4 para cómo lo consume `llm_service.py`.
 
 **Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con rol `admin`, `Assistent_1` con rol `asistente`. Cambiar o rotar esas claves se hace desde `usuarios.html` una vez logueado como `admin`, no editando el script.
 
@@ -309,7 +314,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. ~~SQLite en un solo archivo~~ — **Resuelto (17 de agosto de 2026).** Producción corre en Postgres (§4.2). Corte hecho con downtime de ~30 segundos; los 8 registros existentes migraron sin pérdida ni colisión de IDs (verificado fila por fila antes de dar el visto bueno).
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
-7. **Prompt del asistente hardcodeado** (§4.4) — no editable sin desplegar código nuevo.
+7. ~~Prompt del asistente hardcodeado~~ — **Resuelto (agosto 2026).** Editable desde `/admin/asistente.html` sin necesidad de deploy (§4.4, §4.7). El texto hardcodeado en `llm_service.py` pasó a ser solo el valor por defecto.
 8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
 9. ~~Sin CI/CD~~ — **Resuelto (agosto 2026).** `.github/workflows/ci-cd.yml` corre `pytest` en cada push/PR a `main` (job `test`) y, si pasa y es un push directo a `main`, despliega automáticamente al VPS (job `deploy`, ver §4.6).
 10. **Historial de chat no persistido** — se pierde al recargar la página; no hay forma de dar seguimiento a una conversación de un cliente.

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente virtual | Panel Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/">Inicio</a>
+            <a href="/admin/productos.html">Catálogo Al Detal</a>
+            <a href="/admin/blog.html">Blog</a>
+            <a href="/admin/asistente.html" class="active">Asistente virtual</a>
+            <a href="/admin/usuarios.html" data-solo-admin>Usuarios</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main">
+        <h1>Asistente virtual (Guache el zorro)</h1>
+        <p class="admin-subtitle">Este texto define cómo responde el asistente, tanto en el chat de la web como en Telegram — qué sabe, cómo habla, y qué reglas sigue (por ejemplo, nunca dar un precio fijo). Los cambios aplican de inmediato, sin necesidad de ningún despliegue.</p>
+
+        <div class="admin-panel" id="panelPrompt">
+            <p class="empty-state">Cargando...</p>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        let esPersonalizado = false;
+        let promptPorDefecto = "";
+
+        function renderizarPanel() {
+            document.getElementById("panelPrompt").innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                    <h2 style="margin:0;">Instrucciones del asistente</h2>
+                    <span class="badge-estado ${esPersonalizado ? "" : "oculto"}">${esPersonalizado ? "Personalizado" : "Valor por defecto"}</span>
+                </div>
+                <form id="formPrompt">
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <textarea id="prompt" rows="22" required style="font-family:monospace; font-size:0.85rem;"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="btnGuardar">Guardar cambios</button>
+                        <button type="button" class="btn-secondary" id="btnRestaurar">Restaurar valor por defecto</button>
+                    </div>
+                </form>
+            `;
+
+            document.getElementById("formPrompt").addEventListener("submit", guardarPrompt);
+            document.getElementById("btnRestaurar").addEventListener("click", restaurarPrompt);
+        }
+
+        async function cargarPrompt() {
+            const data = await (await apiFetch("/api/admin/configuracion/prompt")).json();
+            esPersonalizado = data.personalizado;
+            promptPorDefecto = data.prompt_por_defecto;
+            renderizarPanel();
+            document.getElementById("prompt").value = data.prompt;
+        }
+
+        async function guardarPrompt(evento) {
+            evento.preventDefault();
+            const boton = document.getElementById("btnGuardar");
+            boton.disabled = true;
+            boton.innerText = "Guardando...";
+
+            try {
+                const respuesta = await apiFetch("/api/admin/configuracion/prompt", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: document.getElementById("prompt").value }),
+                });
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(error.detail || "No se pudo guardar.");
+                }
+                showToast("Guardado. El asistente ya está usando el nuevo texto.", "success");
+                esPersonalizado = true;
+                renderizarPanel();
+                cargarPrompt();
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`, "error");
+            } finally {
+                boton.disabled = false;
+                boton.innerText = "Guardar cambios";
+            }
+        }
+
+        async function restaurarPrompt() {
+            if (!confirm("¿Volver al texto original? Se pierde la personalización actual.")) return;
+            await apiFetch("/api/admin/configuracion/prompt", { method: "DELETE" });
+            showToast("Restaurado al valor por defecto.", "success");
+            cargarPrompt();
+        }
+
+        (async () => {
+            const sesion = await requerirSesion();
+            if (!sesion) return;
+            cargarPrompt();
+        })();
+    </script>
+</body>
+</html>
