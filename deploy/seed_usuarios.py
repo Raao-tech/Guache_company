@@ -21,6 +21,7 @@ TODOS_LOS_PERMISOS = {
     "permiso_asistente": True,
     "permiso_conversaciones": True,
     "permiso_usuarios": True,
+    "permiso_pedidos": True,
 }
 PERMISOS_ASISTENTE = {**TODOS_LOS_PERMISOS, "permiso_usuarios": False}
 

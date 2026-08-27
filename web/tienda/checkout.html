@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar compra | Agroindustria Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <span class="logo-icon">🌾</span>
+                <span class="logo-text">Agroguache <strong>C.A.</strong></span>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="navLinks">
+                <span></span><span></span><span></span>
+            </button>
+            <nav class="nav-links" id="navLinks">
+                <a href="/tienda/">← Seguir comprando</a>
+                <a href="/tienda/" class="nav-carrito"><strong>🛒 Tienda</strong><span id="carritoBadge" class="carrito-badge"></span></a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="container form-container">
+            <div class="form-header">
+                <h1>Finalizar compra</h1>
+                <p>Revisá tu pedido y completá tus datos.</p>
+            </div>
+
+            <div class="carrito-resumen" id="carritoResumen">
+                <p class="empty-state">Cargando carrito...</p>
+            </div>
+
+            <form id="formCheckout" onsubmit="enviarPedido(event)">
+                <div class="form-group" style="margin-bottom:1.5rem;">
+                    <label>¿Dónde recibís el pedido? *</label>
+                    <div class="mercado-radio-grid" id="mercadoRadioGrid">
+                        <label class="opcion-card">
+                            <input type="radio" name="mercado" value="venezuela" checked>
+                            🇻🇪 Venezuela
+                        </label>
+                        <label class="opcion-card">
+                            <input type="radio" name="mercado" value="espana">
+                            🇪🇸 España
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nombreCliente">Nombre y apellido *</label>
+                        <input type="text" id="nombreCliente" required placeholder="Ej. María Rodríguez">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonoCliente">Teléfono (WhatsApp) *</label>
+                        <input type="tel" id="telefonoCliente" required placeholder="Ej. +58 412 1234567">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emailCliente">Correo electrónico *</label>
+                        <input type="email" id="emailCliente" required placeholder="tucorreo@ejemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="direccionEntrega">Dirección de entrega *</label>
+                        <input type="text" id="direccionEntrega" required placeholder="Calle, ciudad, referencia...">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:1.5rem;">
+                    <label for="notasCliente">Notas (opcional)</label>
+                    <textarea id="notasCliente" rows="2" placeholder="Alguna indicación para la entrega..."></textarea>
+                </div>
+
+                <div id="bloquePagoVenezuela">
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>¿Cómo vas a pagar? *</label>
+                        <div class="metodo-pago-grid" id="metodoPagoGrid">
+                            <label class="opcion-card">
+                                <input type="radio" name="metodo_pago" value="pago_movil_ves" checked>
+                                📱 Pago Móvil
+                            </label>
+                            <label class="opcion-card">
+                                <input type="radio" name="metodo_pago" value="zelle_usd">
+                                💵 Zelle
+                            </label>
+                            <label class="opcion-card">
+                                <input type="radio" name="metodo_pago" value="usdt">
+                                ₿ USDT
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="instrucciones-pago" id="instruccionesPago"></div>
+
+                    <div class="form-group" style="margin-bottom:1.5rem;">
+                        <label for="referenciaPago">Número de referencia / comprobante *</label>
+                        <input type="text" id="referenciaPago" placeholder="Ej. los últimos dígitos de la transferencia">
+                        <p class="field-hint" style="font-size:0.82rem;color:var(--text-muted);">Un administrador va a confirmar tu pago manualmente contra esta referencia — te avisamos por correo cuando quede confirmado.</p>
+                    </div>
+                </div>
+
+                <div id="bloquePagoEspana" style="display:none;">
+                    <div class="instrucciones-pago">
+                        <h4>🇪🇸 Pago con tarjeta — muy pronto</h4>
+                        <p>Todavía estamos terminando de conectar el pago con tarjeta para España. Escribile a Guache por el chat de la web o por correo mientras tanto.</p>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary btn-full" id="btnFinalizarCompra">Confirmar pedido</button>
+            </form>
+        </div>
+    </section>
+
+    <script src="/app.js"></script>
+    <script src="/tienda/tienda.js"></script>
+</body>
+</html>

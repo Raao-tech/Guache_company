@@ -22,6 +22,7 @@ class PermisosIn(BaseModel):
     asistente: bool = False
     conversaciones: bool = False
     usuarios: bool = False
+    pedidos: bool = False
 
 
 class UsuarioIn(BaseModel):
@@ -45,6 +46,7 @@ class UsuarioOut(BaseModel):
     permiso_asistente: bool
     permiso_conversaciones: bool
     permiso_usuarios: bool
+    permiso_pedidos: bool
     activo: bool
     fecha_creacion: Optional[datetime] = None
 

@@ -2,8 +2,8 @@
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, Column, ForeignKey, Integer, String, Float, DateTime, Boolean, Text
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from datetime import datetime
 
 # Carga .env acá también (no solo en src/config.py): cualquier script
@@ -76,6 +76,12 @@ class ProductoDetalDB(Base):
     imagen_url = Column(String, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     orden = Column(Integer, default=0, nullable=False)
+    # stock=None -> ilimitado/no rastreado (así se comportaban todos los
+    # productos antes de la tienda real). Un número sí se descuenta al
+    # crear un pedido — ver src/routers/pedidos.py.
+    stock = Column(Integer, nullable=True)
+    disponible_venezuela = Column(Boolean, nullable=False, default=True)
+    disponible_espana = Column(Boolean, nullable=False, default=True)
     fecha_creacion = Column(DateTime, default=datetime.now)
     fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -118,6 +124,7 @@ class UsuarioDB(Base):
     permiso_asistente = Column(Boolean, nullable=False, default=False)
     permiso_conversaciones = Column(Boolean, nullable=False, default=False)
     permiso_usuarios = Column(Boolean, nullable=False, default=False)
+    permiso_pedidos = Column(Boolean, nullable=False, default=False)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime, default=datetime.now)
 
@@ -149,3 +156,58 @@ class MensajeChatDB(Base):
     rol = Column(String, nullable=False)  # "usuario" | "asistente"
     contenido = Column(Text, nullable=False)
     fecha = Column(DateTime, default=datetime.now, index=True)
+
+
+# Pedidos de la tienda (carrito -> checkout). El carrito en sí vive solo
+# en el navegador (localStorage) — esta tabla nace recién al confirmar
+# el checkout, ya con precios/stock revalidados en el servidor.
+class PedidoDB(Base):
+    __tablename__ = "pedidos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    numero_pedido = Column(String, unique=True, index=True, nullable=False)
+    mercado = Column(String, nullable=False)  # "venezuela" | "espana"
+    metodo_pago = Column(String, nullable=False)  # pago_movil_ves | zelle_usd | usdt | stripe
+    # pendiente_pago -> pagado | cancelado. Ver ESTADOS_PEDIDO en
+    # src/routers/pedidos.py.
+    estado = Column(String, nullable=False, default="pendiente_pago")
+    moneda = Column(String, nullable=False)
+    total = Column(Float, nullable=False)
+    nombre_cliente = Column(String, nullable=False)
+    email_cliente = Column(String, nullable=False)
+    telefono_cliente = Column(String, nullable=False)
+    direccion_entrega = Column(Text, nullable=False)
+    notas_cliente = Column(Text, nullable=True)
+    # Requerida en la validación del router cuando mercado="venezuela" —
+    # a nivel de columna queda nullable porque España no la usa.
+    referencia_pago = Column(String, nullable=True)
+    comprobante_url = Column(String, nullable=True)  # reservado, sin usar todavía (v1 es solo texto)
+    stripe_session_id = Column(String, nullable=True, index=True)
+    stripe_payment_intent_id = Column(String, nullable=True)
+    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    items = relationship("PedidoItemDB", back_populates="pedido", cascade="all, delete-orphan")
+
+
+# Líneas de un pedido. nombre_producto/precio_unitario quedan congelados
+# al momento de la compra (no una referencia viva al catálogo): si el
+# producto se edita, repriza o borra después, el pedido tiene que seguir
+# mostrando lo que el cliente realmente vio y pagó.
+class PedidoItemDB(Base):
+    __tablename__ = "pedido_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pedido_id = Column(Integer, ForeignKey("pedidos.id", ondelete="CASCADE"), nullable=False, index=True)
+    producto_id = Column(Integer, ForeignKey("productos_detal.id", ondelete="SET NULL"), nullable=True)
+    nombre_producto = Column(String, nullable=False)
+    precio_unitario = Column(Float, nullable=False)
+    cantidad = Column(Integer, nullable=False)
+    subtotal = Column(Float, nullable=False)
+    # True solo si esta línea realmente descontó stock al crearse (stock
+    # no era None) — así cancelar/restaurar sabe qué líneas tocar sin
+    # tener que inferirlo del stock actual del producto, que puede haber
+    # cambiado desde entonces.
+    stock_reservado = Column(Boolean, nullable=False, default=False)
+
+    pedido = relationship("PedidoDB", back_populates="items")

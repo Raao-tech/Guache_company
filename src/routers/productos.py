@@ -19,6 +19,9 @@ class ProductoDetalIn(BaseModel):
     imagen_url: Optional[str] = None
     activo: bool = True
     orden: int = 0
+    stock: Optional[int] = Field(None, ge=0)  # None = ilimitado/no rastreado
+    disponible_venezuela: bool = True
+    disponible_espana: bool = True
 
 
 class ProductoDetalOut(ProductoDetalIn):

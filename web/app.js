@@ -14,6 +14,40 @@ function obtenerSesionIdChat() {
     return sesionId;
 }
 
+// CARRITO DE COMPRAS -> localStorage (a diferencia de la sesión de chat,
+// tiene que sobrevivir a cerrar la pestaña). Guarda SOLO producto_id +
+// cantidad, nunca precio ni nombre: el precio real siempre se vuelve a
+// pedir al servidor (acá al mostrar el carrito, y de nuevo al crear el
+// pedido) — así un localStorage manipulado a mano nunca puede mostrar
+// ni cobrar un precio falso.
+function obtenerCarrito() {
+    try {
+        const carrito = JSON.parse(localStorage.getItem('guache_carrito'));
+        return Array.isArray(carrito) ? carrito : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function guardarCarrito(carrito) {
+    localStorage.setItem('guache_carrito', JSON.stringify(carrito));
+    actualizarBadgeCarrito();
+}
+
+function contarItemsCarrito() {
+    return obtenerCarrito().reduce((total, item) => total + item.cantidad, 0);
+}
+
+function actualizarBadgeCarrito() {
+    const cantidad = contarItemsCarrito();
+    document.querySelectorAll('.carrito-badge').forEach((badge) => {
+        badge.textContent = cantidad;
+        badge.style.display = cantidad > 0 ? 'inline-flex' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', actualizarBadgeCarrito);
+
 // Alternar visibilidad de la ventana de chat
 function toggleChat() {
     const chatWindow = document.getElementById('chatWindow');

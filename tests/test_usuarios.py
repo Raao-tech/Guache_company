@@ -27,6 +27,7 @@ TODOS_LOS_PERMISOS = {
     "asistente": True,
     "conversaciones": True,
     "usuarios": True,
+    "pedidos": True,
 }
 
 

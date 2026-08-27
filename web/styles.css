@@ -94,6 +94,34 @@ body {
 }
 
 /* ===================================================
+   2b. NOTIFICACIONES TOAST
+   =================================================== */
+.toast-container {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 360px;
+}
+
+.toast {
+    background: var(--white);
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.toast.error {
+    border-left-color: #C62828;
+}
+
+/* ===================================================
    3. NAVEGACIÓN (NAVBAR)
    =================================================== */
 .navbar {
@@ -136,6 +164,27 @@ body {
 
 .nav-links a:hover {
     color: var(--primary);
+}
+
+.nav-carrito {
+    position: relative;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.carrito-badge {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--secondary);
+    color: var(--white);
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 50px;
 }
 
 .nav-toggle {
@@ -839,6 +888,284 @@ body {
 .breadcrumb a {
     color: var(--primary);
     text-decoration: none;
+}
+
+/* ===================================================
+   11b. TIENDA (carrito, checkout, seguimiento de pedido)
+   =================================================== */
+.tienda-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+.mercado-toggle {
+    display: inline-flex;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 0.3rem;
+    gap: 0.3rem;
+}
+
+.mercado-toggle button {
+    border: none;
+    background: transparent;
+    padding: 0.5rem 1.1rem;
+    border-radius: 50px;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.mercado-toggle button.activo {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.tienda-carrito-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 0.6rem 1.2rem;
+    text-decoration: none;
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.tienda-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+}
+
+.tienda-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.tienda-card .media-slot {
+    aspect-ratio: 4 / 3;
+    border-radius: 0;
+}
+
+.tienda-card-body {
+    padding: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.tienda-card-body h3 {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+}
+
+.tienda-card-body p {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    flex: 1;
+}
+
+.tienda-card-precio {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--primary);
+}
+
+.tienda-card-stock {
+    font-size: 0.8rem;
+    color: var(--secondary);
+    font-weight: 600;
+}
+
+.tienda-card-stock.agotado {
+    color: #C62828;
+}
+
+.tienda-card-agregar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+}
+
+.tienda-card-agregar input[type="number"] {
+    width: 4rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.carrito-vacio {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 1rem;
+}
+
+.carrito-resumen {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.carrito-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.carrito-item-info h4 {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+}
+
+.carrito-item-info p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.carrito-item-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.carrito-item-acciones input[type="number"] {
+    width: 3.5rem;
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.carrito-item-quitar {
+    background: none;
+    border: none;
+    color: #C62828;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.carrito-total {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    font-weight: 700;
+    padding-top: 1rem;
+    border-top: 2px solid var(--border);
+}
+
+.mercado-radio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.metodo-pago-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.opcion-card {
+    position: relative;
+    display: block;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    cursor: pointer;
+    text-align: center;
+}
+
+.opcion-card input {
+    position: absolute;
+    opacity: 0;
+}
+
+.opcion-card:has(input:checked) {
+    border-color: var(--primary);
+    background: #E8F5E9;
+}
+
+.opcion-card:has(input:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.instrucciones-pago {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.92rem;
+}
+
+.instrucciones-pago h4 {
+    font-family: var(--font-heading);
+    margin-bottom: 0.5rem;
+}
+
+.instrucciones-pago dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.75rem;
+    margin: 0.75rem 0;
+}
+
+.instrucciones-pago dt {
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.pedido-estado {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.pedido-estado.pendiente_pago {
+    background: #FFF3CD;
+    color: #856404;
+}
+
+.pedido-estado.pagado {
+    background: #E8F5E9;
+    color: var(--primary-hover);
+}
+
+.pedido-estado.cancelado {
+    background: #FDECEA;
+    color: #C62828;
 }
 
 /* ===================================================

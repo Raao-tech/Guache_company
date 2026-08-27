@@ -19,6 +19,7 @@
             <a href="/admin/">Inicio</a>
             <a href="/admin/productos.html" class="active" data-permiso="productos">Catálogo Al Detal</a>
             <a href="/admin/blog.html" data-permiso="blog">Blog</a>
+            <a href="/admin/pedidos.html" data-permiso="pedidos">Pedidos</a>
             <a href="/admin/asistente.html" data-permiso="asistente">Asistente virtual</a>
             <a href="/admin/conversaciones.html" data-permiso="conversaciones">Conversaciones</a>
             <a href="/admin/usuarios.html" data-permiso="usuarios">Usuarios</a>
@@ -90,10 +91,29 @@
                             <label for="orden">Orden (menor = primero)</label>
                             <input type="number" id="orden" value="0" step="1">
                         </div>
-                        <div class="form-group" style="justify-content:center;">
-                            <label style="display:flex; align-items:center; gap:0.5rem; margin-top:1.6rem;">
-                                <input type="checkbox" id="activo" checked style="width:auto;">
-                                Visible en la web
+                        <div class="form-group">
+                            <label for="stock">Stock (opcional)</label>
+                            <input type="number" id="stock" min="0" step="1" placeholder="Vacío = ilimitado">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="checkbox" id="activo" checked style="width:auto;">
+                            Visible en la web
+                        </label>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Disponible para comprar en la tienda</label>
+                        <div style="display:flex; gap:1.5rem;">
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="disponibleVenezuela" checked style="width:auto;">
+                                🇻🇪 Venezuela
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="disponibleEspana" checked style="width:auto;">
+                                🇪🇸 España
                             </label>
                         </div>
                     </div>
@@ -152,6 +172,7 @@
             document.getElementById("btnCancelar").style.display = "none";
             grupoMonedaOtra.style.display = "none";
             previewImagen.innerHTML = "Sin imagen";
+            document.getElementById("stock").value = "";
         }
 
         function cargarProductoEnFormulario(producto) {
@@ -163,7 +184,10 @@
             document.getElementById("precio").value = producto.precio ?? "";
             setMonedaEnFormulario(producto.moneda);
             document.getElementById("orden").value = producto.orden;
+            document.getElementById("stock").value = producto.stock ?? "";
             document.getElementById("activo").checked = producto.activo;
+            document.getElementById("disponibleVenezuela").checked = producto.disponible_venezuela;
+            document.getElementById("disponibleEspana").checked = producto.disponible_espana;
             previewImagen.innerHTML = producto.imagen_url
                 ? `<img src="${producto.imagen_url}" alt="${escaparHtml(producto.nombre)}">`
                 : "Sin imagen";
@@ -184,11 +208,15 @@
             contenedor.innerHTML = productos
                 .map((p) => {
                     const precioTexto = p.precio ? `${p.precio} ${p.moneda || ""}`.trim() : "Sin precio";
+                    const stockTexto = p.stock === null ? "Stock ilimitado" : `Stock: ${p.stock}`;
+                    const mercadosTexto = [p.disponible_venezuela ? "🇻🇪" : null, p.disponible_espana ? "🇪🇸" : null]
+                        .filter(Boolean)
+                        .join(" ") || "Sin mercado habilitado";
                     return `
                         <div class="admin-list-item ${p.activo ? "" : "inactivo"}">
                             <div class="admin-list-item-info">
                                 <h3>${escaparHtml(p.nombre)} <span class="badge-estado ${p.activo ? "" : "oculto"}">${p.activo ? "Visible" : "Oculto"}</span></h3>
-                                <p>${escaparHtml(precioTexto)}</p>
+                                <p>${escaparHtml(precioTexto)} · ${escaparHtml(stockTexto)} · ${mercadosTexto}</p>
                             </div>
                             <div class="admin-list-item-actions">
                                 <button class="btn-icon" data-editar="${p.id}">✏️</button>
@@ -240,6 +268,11 @@
                     imagen_url: imagenUrl,
                     activo: document.getElementById("activo").checked,
                     orden: parseInt(document.getElementById("orden").value || "0", 10),
+                    stock: document.getElementById("stock").value
+                        ? parseInt(document.getElementById("stock").value, 10)
+                        : null,
+                    disponible_venezuela: document.getElementById("disponibleVenezuela").checked,
+                    disponible_espana: document.getElementById("disponibleEspana").checked,
                 };
 
                 const url = productoEditandoId

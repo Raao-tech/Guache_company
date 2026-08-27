@@ -19,6 +19,7 @@
             <a href="/admin/">Inicio</a>
             <a href="/admin/productos.html" data-permiso="productos">Catálogo Al Detal</a>
             <a href="/admin/blog.html" data-permiso="blog">Blog</a>
+            <a href="/admin/pedidos.html" data-permiso="pedidos">Pedidos</a>
             <a href="/admin/asistente.html" data-permiso="asistente">Asistente virtual</a>
             <a href="/admin/conversaciones.html" data-permiso="conversaciones">Conversaciones</a>
             <a href="/admin/usuarios.html" class="active" data-permiso="usuarios">Usuarios</a>
@@ -78,6 +79,10 @@
                                 <input type="checkbox" id="permisoUsuarios" style="width:auto;">
                                 Usuarios (crear/editar/borrar cuentas)
                             </label>
+                            <label style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="checkbox" id="permisoPedidos" style="width:auto;">
+                                Pedidos (tienda)
+                            </label>
                         </div>
                     </div>
 
@@ -114,6 +119,7 @@
             asistente: "permisoAsistente",
             conversaciones: "permisoConversaciones",
             usuarios: "permisoUsuarios",
+            pedidos: "permisoPedidos",
         };
 
         function leerPermisosDelFormulario() {
@@ -131,6 +137,7 @@
                 permiso_asistente: "Asistente",
                 permiso_conversaciones: "Conversaciones",
                 permiso_usuarios: "Usuarios",
+                permiso_pedidos: "Pedidos",
             };
             const activos = Object.entries(nombres)
                 .filter(([campo]) => usuario[campo])

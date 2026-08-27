@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos | Panel Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/">Inicio</a>
+            <a href="/admin/productos.html" data-permiso="productos">Catálogo Al Detal</a>
+            <a href="/admin/blog.html" data-permiso="blog">Blog</a>
+            <a href="/admin/pedidos.html" class="active" data-permiso="pedidos">Pedidos</a>
+            <a href="/admin/asistente.html" data-permiso="asistente">Asistente virtual</a>
+            <a href="/admin/conversaciones.html" data-permiso="conversaciones">Conversaciones</a>
+            <a href="/admin/usuarios.html" data-permiso="usuarios">Usuarios</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main" id="contenidoPagina">
+        <h1>Pedidos de la tienda</h1>
+        <p class="admin-subtitle">Pedidos de Venezuela quedan "Pendiente de pago" hasta que confirmes la referencia contra tu banco/Zelle/wallet. Los de España se confirman solos apenas esté conectado Stripe.</p>
+
+        <div class="admin-grid">
+            <div class="admin-panel">
+                <div style="display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap;">
+                    <select id="filtroEstado">
+                        <option value="">Todos los estados</option>
+                        <option value="pendiente_pago">Pendiente de pago</option>
+                        <option value="pagado">Pagado</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                    <select id="filtroMercado">
+                        <option value="">Todos los mercados</option>
+                        <option value="venezuela">🇻🇪 Venezuela</option>
+                        <option value="espana">🇪🇸 España</option>
+                    </select>
+                </div>
+                <div class="admin-list" id="listaPedidos">
+                    <p class="empty-state">Cargando...</p>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2 id="tituloDetalle">Seleccioná un pedido</h2>
+                <div id="detallePedido" class="admin-list">
+                    <p class="empty-state">Elegí un pedido de la lista para ver el detalle.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        const NOMBRES_ESTADO = {
+            pendiente_pago: "Pendiente de pago",
+            pagado: "Pagado",
+            cancelado: "Cancelado",
+        };
+        const NOMBRES_MERCADO = { venezuela: "🇻🇪 Venezuela", espana: "🇪🇸 España" };
+        const NOMBRES_METODO = {
+            pago_movil_ves: "Pago Móvil",
+            zelle_usd: "Zelle",
+            usdt: "USDT",
+            stripe: "Stripe (tarjeta)",
+        };
+
+        function formatearFecha(fechaIso) {
+            if (!fechaIso) return "";
+            return new Date(fechaIso).toLocaleString("es-VE", {
+                day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+            });
+        }
+
+        async function cargarLista() {
+            const contenedor = document.getElementById("listaPedidos");
+            const params = new URLSearchParams();
+            const estado = document.getElementById("filtroEstado").value;
+            const mercado = document.getElementById("filtroMercado").value;
+            if (estado) params.set("estado", estado);
+            if (mercado) params.set("mercado", mercado);
+
+            const pedidos = await (await apiFetch(`/api/admin/pedidos?${params}`)).json();
+
+            if (pedidos.length === 0) {
+                contenedor.innerHTML = '<p class="empty-state">No hay pedidos con ese filtro.</p>';
+                return;
+            }
+
+            contenedor.innerHTML = pedidos
+                .map(
+                    (p) => `
+                        <div class="admin-list-item" style="cursor:pointer;" data-pedido="${p.id}">
+                            <div class="admin-list-item-info">
+                                <h3>${escaparHtml(p.numero_pedido)} <span class="badge-estado ${p.estado === "cancelado" ? "oculto" : ""}">${NOMBRES_ESTADO[p.estado] || p.estado}</span></h3>
+                                <p>${escaparHtml(p.nombre_cliente)} · ${NOMBRES_MERCADO[p.mercado] || p.mercado} · ${p.total} ${escaparHtml(p.moneda)}</p>
+                                <p class="field-hint">${formatearFecha(p.fecha_creacion)}</p>
+                            </div>
+                        </div>
+                    `
+                )
+                .join("");
+
+            contenedor.querySelectorAll("[data-pedido]").forEach((el) => {
+                el.addEventListener("click", () => cargarDetalle(Number(el.dataset.pedido)));
+            });
+        }
+
+        async function cargarDetalle(pedidoId) {
+            document.getElementById("tituloDetalle").innerText = "Cargando...";
+            const contenedor = document.getElementById("detallePedido");
+            contenedor.innerHTML = '<p class="empty-state">Cargando...</p>';
+
+            const pedido = await (await apiFetch(`/api/admin/pedidos/${pedidoId}`)).json();
+            document.getElementById("tituloDetalle").innerText = pedido.numero_pedido;
+
+            const filasItems = pedido.items
+                .map(
+                    (item) => `
+                        <div class="admin-list-item">
+                            <div class="admin-list-item-info">
+                                <h3>${escaparHtml(item.nombre_producto)}</h3>
+                                <p>${item.cantidad} x ${item.precio_unitario} ${escaparHtml(pedido.moneda)} = ${item.subtotal.toFixed(2)} ${escaparHtml(pedido.moneda)}</p>
+                            </div>
+                        </div>
+                    `
+                )
+                .join("");
+
+            const puedeGestionar = pedido.estado === "pendiente_pago";
+
+            contenedor.innerHTML = `
+                <p><strong>Estado:</strong> <span class="badge-estado ${pedido.estado === "cancelado" ? "oculto" : ""}">${NOMBRES_ESTADO[pedido.estado] || pedido.estado}</span></p>
+                <p><strong>Mercado:</strong> ${NOMBRES_MERCADO[pedido.mercado] || pedido.mercado}</p>
+                <p><strong>Método de pago:</strong> ${NOMBRES_METODO[pedido.metodo_pago] || pedido.metodo_pago}</p>
+                ${pedido.referencia_pago ? `<p><strong>Referencia de pago:</strong> ${escaparHtml(pedido.referencia_pago)}</p>` : ""}
+                <p><strong>Cliente:</strong> ${escaparHtml(pedido.nombre_cliente)}</p>
+                <p><strong>Email:</strong> ${escaparHtml(pedido.email_cliente)}</p>
+                <p><strong>Teléfono:</strong> ${escaparHtml(pedido.telefono_cliente)}</p>
+                <p><strong>Dirección de entrega:</strong> ${escaparHtml(pedido.direccion_entrega)}</p>
+                ${pedido.notas_cliente ? `<p><strong>Notas:</strong> ${escaparHtml(pedido.notas_cliente)}</p>` : ""}
+                <h3 style="margin-top:1rem;">Ítems</h3>
+                ${filasItems}
+                <p style="margin-top:0.5rem;"><strong>Total: ${pedido.total.toFixed(2)} ${escaparHtml(pedido.moneda)}</strong></p>
+                ${
+                    puedeGestionar
+                        ? `
+                    <div class="form-actions" style="margin-top:1.5rem;">
+                        <button class="btn-primary" id="btnConfirmar">Confirmar pago</button>
+                        <button class="btn-secondary" id="btnCancelar">Cancelar pedido</button>
+                    </div>
+                `
+                        : ""
+                }
+            `;
+
+            if (puedeGestionar) {
+                document.getElementById("btnConfirmar").addEventListener("click", () => gestionarPedido(pedidoId, "confirmar"));
+                document.getElementById("btnCancelar").addEventListener("click", () => {
+                    if (!confirm("¿Cancelar este pedido? Se restaura el stock reservado.")) return;
+                    gestionarPedido(pedidoId, "cancelar");
+                });
+            }
+        }
+
+        async function gestionarPedido(pedidoId, accion) {
+            const respuesta = await apiFetch(`/api/admin/pedidos/${pedidoId}/${accion}`, { method: "POST" });
+            if (!respuesta.ok) {
+                const error = await respuesta.json();
+                showToast(`⚠️ ${error.detail}`, "error");
+                return;
+            }
+            showToast(accion === "confirmar" ? "Pago confirmado." : "Pedido cancelado.", "success");
+            cargarLista();
+            cargarDetalle(pedidoId);
+        }
+
+        document.getElementById("filtroEstado").addEventListener("change", cargarLista);
+        document.getElementById("filtroMercado").addEventListener("change", cargarLista);
+
+        (async () => {
+            const sesion = await requerirSesion();
+            if (!sesion || !requerirPermiso(sesion, "pedidos")) return;
+            cargarLista();
+        })();
+    </script>
+</body>
+</html>

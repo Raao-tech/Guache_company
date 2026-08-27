@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tienda | Agroindustria Guache</title>
+    <meta name="description" content="Comprá presentaciones de café, cacao, arroz y harinas Guache al detal — envíos a Venezuela y España.">
+    <link rel="stylesheet" href="/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <span class="logo-icon">🌾</span>
+                <span class="logo-text">Agroguache <strong>C.A.</strong></span>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="navLinks">
+                <span></span><span></span><span></span>
+            </button>
+            <nav class="nav-links" id="navLinks">
+                <a href="/#servicios">Servicios</a>
+                <a href="/#rubros">Rubros</a>
+                <a href="/#productos">Mayorista</a>
+                <a href="/blog/">Blog</a>
+                <a href="/tienda/" class="nav-carrito"><strong>🛒 Tienda</strong><span id="carritoBadge" class="carrito-badge"></span></a>
+                <a href="/#cotizar" class="btn-primary-sm">Cotizar al Mayor</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="container">
+            <h1 class="section-title">Tienda Guache</h1>
+            <p class="section-subtitle">Compra directa al consumidor final — presentaciones familiares e individuales, con envío a Venezuela y España.</p>
+
+            <div class="tienda-topbar">
+                <div class="mercado-toggle" id="mercadoToggle">
+                    <button type="button" data-mercado="venezuela" class="activo">🇻🇪 Venezuela</button>
+                    <button type="button" data-mercado="espana">🇪🇸 España</button>
+                </div>
+                <a href="/tienda/checkout.html" class="tienda-carrito-link">🛒 Ver carrito<span id="carritoBadgeTop" class="carrito-badge"></span></a>
+            </div>
+
+            <div class="tienda-grid" id="tiendaGrid">
+                <p class="empty-state">Cargando productos...</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-bottom">
+                &copy; 2026 Guache, C.A. (Guache Compañía Anónima). Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
+
+    <script src="/app.js"></script>
+    <script src="/tienda/tienda.js"></script>
+</body>
+</html>

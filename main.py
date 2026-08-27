@@ -19,7 +19,7 @@ from src import config
 from src.services.llm_service import generar_respuesta_llm
 from src.bots.telegram_bot import crear_aplicacion_bot
 from src.database import get_db, CotizacionDB, MensajeChatDB
-from src.routers import admin_auth, uploads, productos, blog, usuarios, configuracion, conversaciones
+from src.routers import admin_auth, uploads, productos, blog, usuarios, configuracion, conversaciones, pedidos
 
 # Configuración de logging
 logging.basicConfig(
@@ -88,6 +88,7 @@ app.include_router(blog.router)
 app.include_router(usuarios.router)
 app.include_router(configuracion.router)
 app.include_router(conversaciones.router)
+app.include_router(pedidos.router)
 
 # ------------------------------------------------------------------
 # DEPENDENCIA DE AUTENTICACIÓN (ADMINISTRACIÓN)
@@ -236,6 +237,20 @@ async def pagina_articulo_blog(slug: str):
     que había antes por artículo (ahora viven en la base de datos).
     """
     return FileResponse("web/blog/post.html")
+
+
+# ------------------------------------------------------------------
+# PÁGINA DE SEGUIMIENTO DE PEDIDO (dinámica, misma plantilla siempre)
+# ------------------------------------------------------------------
+@app.get("/tienda/pedido/{numero_pedido}")
+async def pagina_pedido(numero_pedido: str):
+    """
+    Sirve siempre la misma plantilla (web/tienda/pedido.html), tanto para
+    la confirmación justo después de pagar (?nuevo=1) como para consultar
+    el estado más tarde. El número se lee en el cliente desde la URL y el
+    contenido se pide a GET /api/tienda/pedidos/{numero_pedido}.
+    """
+    return FileResponse("web/tienda/pedido.html")
 
 
 # ------------------------------------------------------------------

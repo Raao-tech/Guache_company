@@ -27,7 +27,7 @@ def require_admin_session(request: Request) -> None:
         )
 
 
-PERMISOS_DISPONIBLES = ["productos", "blog", "asistente", "conversaciones", "usuarios"]
+PERMISOS_DISPONIBLES = ["productos", "blog", "asistente", "conversaciones", "usuarios", "pedidos"]
 
 
 def require_permission(modulo: str):

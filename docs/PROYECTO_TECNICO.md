@@ -59,7 +59,8 @@ Project_0/
 │   │   ├── blog.py                # CRUD de artículos del blog
 │   │   ├── usuarios.py            # CRUD de cuentas del panel (requiere permiso "usuarios")
 │   │   ├── configuracion.py       # GET/PUT/DELETE del prompt del asistente
-│   │   └── conversaciones.py      # Listado y detalle del historial de chat (solo lectura)
+│   │   ├── conversaciones.py      # Listado y detalle del historial de chat (solo lectura)
+│   │   └── pedidos.py             # Checkout público + gestión de pedidos (requiere permiso "pedidos")
 │   ├── bots/
 │   │   └── telegram_bot.py      # Bot de Telegram (python-telegram-bot)
 │   └── services/
@@ -72,14 +73,20 @@ Project_0/
 │   ├── admin/                   # Panel de administración (ver §4.7)
 │   │   ├── login.html / admin.js / admin.css
 │   │   ├── index.html             # Dashboard
-│   │   ├── productos.html         # Gestión del catálogo "Al Detal"
+│   │   ├── productos.html         # Gestión del catálogo "Al Detal" (incluye stock y disponibilidad por mercado)
 │   │   ├── blog.html              # Gestión del blog
+│   │   ├── pedidos.html           # Gestión de pedidos de la tienda (requiere permiso "pedidos")
 │   │   ├── usuarios.html          # Gestión de cuentas (requiere permiso "usuarios")
 │   │   ├── asistente.html         # Editar el prompt del asistente virtual
 │   │   └── conversaciones.html    # Ver historial de chat (web y Telegram)
-│   └── blog/
-│       ├── index.html             # Listado de artículos (dinámico, fetch a /api/blog/posts)
-│       └── post.html              # Plantilla única para cualquier artículo (dinámico por slug)
+│   ├── blog/
+│   │   ├── index.html             # Listado de artículos (dinámico, fetch a /api/blog/posts)
+│   │   └── post.html              # Plantilla única para cualquier artículo (dinámico por slug)
+│   └── tienda/                  # Tienda real: carrito, checkout, seguimiento (ver §4.8)
+│       ├── index.html             # Catálogo con selector de mercado (VE/ES) y "agregar al carrito"
+│       ├── checkout.html          # Resumen del carrito + datos de contacto + método de pago
+│       ├── pedido.html            # Confirmación (?nuevo=1) y seguimiento — GET /tienda/pedido/{numero}
+│       └── tienda.js              # Carrito (localStorage), checkout y seguimiento
 ├── deploy/
 │   ├── agroguache.nginx           # Config de Nginx para el VPS de producción
 │   ├── agroguache.service         # Unit de systemd para correr uvicorn
@@ -220,10 +227,10 @@ sudo systemctl start agroguache.service
 Permite a personas sin conocimientos técnicos actualizar el catálogo "Al Detal" y el blog sin tocar código ni pedirle nada a un desarrollador. Vive completamente en el mismo backend (sin servicio aparte).
 
 **Autenticación:** sesión por cookie firmada (`starlette.middleware.sessions.SessionMiddleware`, `SESSION_SECRET_KEY` en `.env`). Login en `POST /api/admin/login` (`src/routers/admin_auth.py`), dependencia `require_admin_session` protege el resto de las rutas `/api/admin/*`. Dos formas de autenticarse, evaluadas en ese orden:
-1. **Cuenta compartida de respaldo** (`ADMIN_USERNAME` / `ADMIN_PASSWORD` en `.env`) — la misma que protege `GET /api/cotizaciones` por HTTP Basic. Siempre tiene los 5 permisos, no pasa por la tabla `usuarios`.
+1. **Cuenta compartida de respaldo** (`ADMIN_USERNAME` / `ADMIN_PASSWORD` en `.env`) — la misma que protege `GET /api/cotizaciones` por HTTP Basic. Siempre tiene los 6 permisos, no pasa por la tabla `usuarios`.
 2. **Usuarios individuales** (tabla `usuarios`) — cada persona con su propia cuenta y clave (hasheada con `bcrypt`, nunca en texto plano).
 
-**Permisos finos por módulo** (agosto 2026, reemplaza el esquema anterior de rol único `admin`/`asistente`): cada usuario tiene 5 columnas booleanas independientes — `permiso_productos`, `permiso_blog`, `permiso_asistente`, `permiso_conversaciones`, `permiso_usuarios` — que se pueden combinar de cualquier forma (ej. alguien con acceso solo a Blog, sin ver conversaciones ni tocar el catálogo). Al loguearse, el login arma un diccionario `permisos` y lo guarda en la sesión; la dependencia `require_permission(modulo)` (`src/routers/admin_auth.py`) protege cada ruta `/api/admin/...` exigiendo el permiso de su propio módulo, devolviendo `403 Forbidden` si falta. `permiso_usuarios` es el más sensible: quien lo tiene puede crear/editar/borrar cualquier cuenta y otorgarle cualquier permiso (incluido `permiso_usuarios` a sí mismo o a otros) — equivale en la práctica al viejo rol `admin`. Los tres usuarios iniciales (`deploy/seed_usuarios.py`) quedaron migrados así: `Developer_1` y `Senaida` con los 5 permisos, `Assistent_1` con los 5 menos `permiso_usuarios`.
+**Permisos finos por módulo** (agosto 2026, reemplaza el esquema anterior de rol único `admin`/`asistente`): cada usuario tiene 6 columnas booleanas independientes — `permiso_productos`, `permiso_blog`, `permiso_asistente`, `permiso_conversaciones`, `permiso_usuarios`, `permiso_pedidos` — que se pueden combinar de cualquier forma (ej. alguien con acceso solo a Blog, sin ver conversaciones ni tocar el catálogo). Al loguearse, el login arma un diccionario `permisos` y lo guarda en la sesión; la dependencia `require_permission(modulo)` (`src/routers/admin_auth.py`) protege cada ruta `/api/admin/...` exigiendo el permiso de su propio módulo, devolviendo `403 Forbidden` si falta. `permiso_usuarios` es el más sensible: quien lo tiene puede crear/editar/borrar cualquier cuenta y otorgarle cualquier permiso (incluido `permiso_usuarios` a sí mismo o a otros) — equivale en la práctica al viejo rol `admin`. Los tres usuarios iniciales (`deploy/seed_usuarios.py`) quedaron migrados así: `Developer_1` y `Senaida` con los 6 permisos, `Assistent_1` con los 6 menos `permiso_usuarios`.
 
 **Páginas** (`web/admin/`, todas con `<meta name="robots" content="noindex, nofollow">`):
 - `login.html` — formulario de acceso.
@@ -244,7 +251,27 @@ Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve
 
 **Conversaciones** (`src/routers/conversaciones.py`, `web/admin/conversaciones.html`): historial de chat, tabla `mensajes_chat` (§4.4). `GET /api/admin/conversaciones` agrupa mensajes por `sesion_id` en Python (no `GROUP BY` en SQL — más simple y portable SQLite/Postgres a este volumen; primer lugar a optimizar si el tráfico crece mucho). `GET /api/admin/conversaciones/{sesion_id}` devuelve el hilo completo, ordenado por fecha. Solo lectura — no hay forma de borrar conversaciones desde el panel todavía (dato pendiente de una política de retención, igual que las cotizaciones).
 
-**Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con los 5 permisos, `Assistent_1` con los 5 menos `permiso_usuarios` (ver arriba). Cambiar o rotar esas claves, o los permisos de una cuenta, se hace desde `usuarios.html` una vez logueado con `permiso_usuarios`, no editando el script.
+**Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con los 6 permisos, `Assistent_1` con los 6 menos `permiso_usuarios` (ver arriba). Cambiar o rotar esas claves, o los permisos de una cuenta, se hace desde `usuarios.html` una vez logueado con `permiso_usuarios`, no editando el script.
+
+---
+
+### 4.8 Tienda real — carrito, checkout y pedidos (`web/tienda/`, `src/routers/pedidos.py`)
+
+Fase 1 (agosto 2026) de la venta al detal real — reemplaza el preview estático de §4.5/§8.1 con un checkout funcional para **Venezuela**. España queda con un botón deshabilitado ("muy pronto") hasta la Fase 2 (Stripe, ver §8.1).
+
+**El catálogo administrable ya existente es la tienda** — `ProductoDetalDB` (el mismo que alimenta la sección "Al Detal" del home, §4.7) se extendió con `stock` (nullable, `None` = ilimitado/no rastreado) y dos flags `disponible_venezuela`/`disponible_espana` para curar qué se vende en cada mercado, en vez de mantener un catálogo separado.
+
+**Carrito 100% del lado del cliente** (`localStorage`, clave `guache_carrito`, funciones compartidas en `app.js`: `obtenerCarrito`/`guardarCarrito`/`contarItemsCarrito`) — guarda únicamente `{producto_id, cantidad}`, nunca precio ni nombre. El precio real siempre se vuelve a pedir al servidor, tanto para mostrar el carrito como (de nuevo, server-side) al crear el pedido — un `localStorage` manipulado a mano no puede alterar lo que se cobra. Un carrito no puede mezclar productos en distintas monedas (restricción dura de Stripe que se aplica parejo en los dos mercados).
+
+**Reserva de stock atómica al crear el pedido** (no al confirmar el pago): `UPDATE ... SET stock = stock - :cant WHERE stock >= :cant`, revisando `rowcount`, para que dos checkouts concurrentes no vendan la misma unidad dos veces. Cada línea de pedido (`PedidoItemDB.stock_reservado`) guarda si efectivamente descontó stock, para que cancelar restaure exactamente eso — de forma idempotente — sin tener que inferirlo del stock actual del producto (que puede haber cambiado desde la compra).
+
+**Checkout de Venezuela es de confirmación manual**, igual que ya se revisan las cotizaciones: el cliente paga por Pago Móvil, Zelle o USDT y manda un número de referencia; el pedido queda `pendiente_pago` hasta que un admin con permiso `pedidos` lo confirma o cancela desde `/admin/pedidos.html` (`POST /api/admin/pedidos/{id}/confirmar|cancelar`). Cancelar restaura el stock reservado.
+
+**Seguimiento público** (`GET /tienda/pedido/{numero_pedido}`, mismo patrón que `/blog/{slug}`: una sola plantilla, el número se lee de la URL): como no hay cuentas de cliente, el número de pedido es el único control de acceso — por eso se genera con entropía real (`PED-{año}-{uuid.uuid4().hex[:16].upper()}`, 64 bits), a diferencia del folio corto de `cotizaciones`. La respuesta pública (`GET /api/tienda/pedidos/{numero}`) deliberadamente no incluye teléfono, dirección ni referencia de pago — eso solo se ve en el panel admin.
+
+> ⚠️ **Pendiente antes de publicar esto en producción de verdad:** `web/tienda/tienda.js` (`INSTRUCCIONES_METODO_PAGO`) todavía tiene el placeholder `[completar]` en los datos de USDT (falta la wallet real) — Pago Móvil y Zelle ya tienen los datos reales cargados.
+
+> ⚠️ **Fuera de alcance a propósito, no decidido por el desarrollo:** esta fase no calcula IVA/impuestos ni genera factura fiscal (ni en España ni en Venezuela) — el total cobrado es exactamente la suma de los precios configurados. Antes de operar en real en España conviene confirmar con contabilidad/gestoría si hace falta facturación fiscal automática. Tampoco hay costo de envío/logística calculado (ver §8.1).
 
 ---
 
@@ -317,7 +344,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 
 1. ~~`GET /api/cotizaciones` sin autenticación~~ — **Resuelto (agosto 2026).** Protegido con HTTP Basic Auth (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, ver `main.py::verificar_admin`). Es una solución mínima apropiada para el estado actual del proyecto (sin usuarios/roles) — cuando exista el panel de administración (§8.2) esto debería migrar a un sistema de sesiones/roles real.
 2. ~~CORS abierto (`allow_origins=["*"]`)~~ — **Resuelto (agosto 2026).** Ahora configurable vía `ALLOWED_ORIGINS` en `.env`. La web y la API comparten origen (mismo dominio, FastAPI sirve ambos), así que esto no bloquea el uso normal del sitio — igual conviene setear `ALLOWED_ORIGINS=https://guache.online,https://www.guache.online` en el `.env` del VPS explícitamente (hoy sigue con el default de `localhost`, solo funciona por ser same-origin, no por estar bien configurado).
-3. ~~Sin autenticación de usuarios/roles~~ — **Resuelto (agosto 2026).** Tabla `usuarios` con cuentas individuales, clave hasheada (`bcrypt`) y permisos finos por módulo — `productos`, `blog`, `asistente`, `conversaciones`, `usuarios` — combinables individualmente (ver §4.7). Reemplazó el esquema anterior de rol único `admin`/`asistente` (mismo mes). La cuenta compartida `ADMIN_USERNAME`/`ADMIN_PASSWORD` se mantiene como respaldo, no se retiró.
+3. ~~Sin autenticación de usuarios/roles~~ — **Resuelto (agosto 2026).** Tabla `usuarios` con cuentas individuales, clave hasheada (`bcrypt`) y permisos finos por módulo — `productos`, `blog`, `asistente`, `conversaciones`, `usuarios`, `pedidos` — combinables individualmente (ver §4.7). Reemplazó el esquema anterior de rol único `admin`/`asistente` (mismo mes). La cuenta compartida `ADMIN_USERNAME`/`ADMIN_PASSWORD` se mantiene como respaldo, no se retiró.
 4. ~~Sin migraciones de base de datos~~ — **Resuelto (agosto 2026).** Esquema gestionado con Alembic (ver §4.2 y §6). **Pendiente:** correr `alembic stamp head` una vez en el VPS de producción al desplegar este cambio (la tabla ya existe ahí, creada previamente con `create_all()`).
 5. ~~SQLite en un solo archivo~~ — **Resuelto (17 de agosto de 2026).** Producción corre en Postgres (§4.2). Corte hecho con downtime de ~30 segundos; los 8 registros existentes migraron sin pérdida ni colisión de IDs (verificado fila por fila antes de dar el visto bueno).
 6. ~~Dependencia sin usar (`google-genai`, `google-auth`)~~ — **Resuelto (agosto 2026).** Se eliminaron de `requirements.txt` junto con sus dependencias transitivas exclusivas (`cryptography`, `cffi`, `pycparser`, `pyasn1`, `pyasn1_modules`). El servicio LLM usa únicamente Groq.
@@ -332,14 +359,15 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 
 ### 8.1 Tienda / venta al detal (e-commerce)
 
-Hoy el sitio solo permite **cotizar al mayor**, más una sección de **preview** (`#detal` en `index.html`, agosto 2026) que presenta la categoría de productos que vendrá y deriva al chat — sin carrito, sin checkout, sin precios de detal (a propósito: no hay backend que los soporte todavía). La estrategia de negocio requiere ir más allá de ese preview y permitir que el consumidor final **compre directamente** ciertos productos (presentaciones de detal: café, cacao, harinas, arroz, etc.).
+**Fase 1 hecha (agosto 2026)** — ver §4.8. Carrito, checkout y gestión de pedidos funcionando de punta a punta para **Venezuela** (Pago Móvil, Zelle, USDT — confirmación manual desde `/admin/pedidos.html`), con stock reservado automáticamente y catálogo curado por mercado (`disponible_venezuela`/`disponible_espana`).
 
-Implica, como mínimo:
-- Modelo de datos de catálogo (productos de detal, precios, stock, imágenes) — independiente del catálogo mayorista actual.
-- Carrito de compra y checkout.
-- Integración de pasarela de pago apta para España/Colombia (ej. Stripe, Redsys, PayU, PayPal).
-- Cálculo de envío internacional / logística de última milla — a definir con negocio.
-- Multi-moneda (EUR, COP, USD) y probablemente multi-idioma/variante regional del español.
+**Fase 2 — pendiente:** integración de Stripe para **España** (pago con tarjeta, confirmación automática vía webhook). Bloqueada hasta contar con claves de prueba reales de Stripe. Diseño ya definido: una sola moneda por carrito (restricción de Stripe), whitelist de monedas aceptadas (arranca en EUR), `checkout.session.completed`/`checkout.session.expired` reutilizando el mismo helper de confirmar/cancelar que ya usa Venezuela.
+
+**Fuera de alcance en ambas fases, a definir con negocio:**
+- Cálculo de envío internacional / logística de última milla — el total del pedido hoy es solo la suma de los ítems.
+- IVA/impuestos y facturación fiscal automática (ver advertencia en §4.8) — confirmar con contabilidad/gestoría antes de operar en real, sobre todo en España.
+- Multi-idioma/variante regional del español (el checkout está en español neutro, sin traducción).
+- Datos reales de pago para Venezuela (banco/teléfono de Pago Móvil, correo Zelle, wallet USDT) — hoy son placeholders en `tienda.js`, ver §4.8.
 
 ### 8.2 Panel de administración (CMS interno)
 
