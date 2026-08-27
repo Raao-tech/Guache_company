@@ -18,8 +18,8 @@ from sqlalchemy.orm import Session
 from src import config
 from src.services.llm_service import generar_respuesta_llm
 from src.bots.telegram_bot import crear_aplicacion_bot
-from src.database import get_db, CotizacionDB
-from src.routers import admin_auth, uploads, productos, blog, usuarios, configuracion
+from src.database import get_db, CotizacionDB, MensajeChatDB
+from src.routers import admin_auth, uploads, productos, blog, usuarios, configuracion, conversaciones
 
 # Configuración de logging
 logging.basicConfig(
@@ -87,6 +87,7 @@ app.include_router(productos.router)
 app.include_router(blog.router)
 app.include_router(usuarios.router)
 app.include_router(configuracion.router)
+app.include_router(conversaciones.router)
 
 # ------------------------------------------------------------------
 # DEPENDENCIA DE AUTENTICACIÓN (ADMINISTRACIÓN)
@@ -127,9 +128,11 @@ class CotizacionResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     mensaje: str = Field(..., min_length=1)
+    sesion_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     respuesta: str
+    sesion_id: str
 
 class CotizacionDetalle(BaseModel):
     id: int
@@ -204,13 +207,22 @@ async def listar_cotizaciones(db: Session = Depends(get_db), _admin: str = Depen
         raise HTTPException(status_code=500, detail="Error interno al consultar la base de datos.")
     
 @app.post("/api/chat", response_model=ChatResponse, tags=["Asistente Guache"])
-async def chat_guache(payload: ChatRequest):
+async def chat_guache(payload: ChatRequest, db: Session = Depends(get_db)):
+    sesion_id = payload.sesion_id or uuid.uuid4().hex
+
+    db.add(MensajeChatDB(sesion_id=sesion_id, canal="web", rol="usuario", contenido=payload.mensaje))
+    db.commit()
+
     try:
         respuesta_bot = await generar_respuesta_llm(prompt_usuario=payload.mensaje)
-        return ChatResponse(respuesta=respuesta_bot)
     except Exception as e:
         logger.error(f"Error en chat Guache: {e}")
         raise HTTPException(status_code=500, detail="Error al procesar la respuesta.")
+
+    db.add(MensajeChatDB(sesion_id=sesion_id, canal="web", rol="asistente", contenido=respuesta_bot))
+    db.commit()
+
+    return ChatResponse(respuesta=respuesta_bot, sesion_id=sesion_id)
 
 # ------------------------------------------------------------------
 # PÁGINA DE ARTÍCULO DE BLOG (dinámica, misma plantilla para todos los slugs)

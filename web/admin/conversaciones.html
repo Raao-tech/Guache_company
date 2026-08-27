@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversaciones | Panel Guache</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <header class="admin-topbar">
+        <div class="logo">🌾 Panel Guache</div>
+        <nav class="admin-nav">
+            <a href="/admin/">Inicio</a>
+            <a href="/admin/productos.html">Catálogo Al Detal</a>
+            <a href="/admin/blog.html">Blog</a>
+            <a href="/admin/asistente.html">Asistente virtual</a>
+            <a href="/admin/conversaciones.html" class="active">Conversaciones</a>
+            <a href="/admin/usuarios.html" data-solo-admin>Usuarios</a>
+            <a href="/" target="_blank">Ver sitio ↗</a>
+            <a href="#" onclick="cerrarSesion(); return false;">Salir</a>
+        </nav>
+    </header>
+
+    <main class="admin-main">
+        <h1>Conversaciones</h1>
+        <p class="admin-subtitle">Historial de charlas con el asistente virtual, web y Telegram. Se agrupan automáticamente por sesión — en la web, una sesión dura mientras la pestaña del navegador siga abierta.</p>
+
+        <div class="admin-grid">
+            <div class="admin-panel">
+                <h2>Sesiones</h2>
+                <div class="admin-list" id="listaConversaciones">
+                    <p class="empty-state">Cargando...</p>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2 id="tituloConversacion">Seleccioná una conversación</h2>
+                <div id="hiloConversacion" class="admin-list">
+                    <p class="empty-state">Elegí una sesión de la lista para ver los mensajes.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+    <script src="/admin/admin.js"></script>
+    <script>
+        function formatearFecha(fechaIso) {
+            if (!fechaIso) return "";
+            return new Date(fechaIso).toLocaleString("es-VE", {
+                day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+            });
+        }
+
+        async function cargarLista() {
+            const contenedor = document.getElementById("listaConversaciones");
+            const conversaciones = await (await apiFetch("/api/admin/conversaciones")).json();
+
+            if (conversaciones.length === 0) {
+                contenedor.innerHTML = '<p class="empty-state">Todavía no hay conversaciones registradas.</p>';
+                return;
+            }
+
+            contenedor.innerHTML = conversaciones
+                .map(
+                    (c) => `
+                        <div class="admin-list-item" style="cursor:pointer;" data-sesion="${escaparHtml(c.sesion_id)}">
+                            <div class="admin-list-item-info">
+                                <h3>${c.canal === "telegram" ? "🤖 Telegram" : "🌐 Web"} <span class="badge-estado">${c.cantidad_mensajes} msj.</span></h3>
+                                <p>${escaparHtml(c.ultimo_mensaje.slice(0, 80))}${c.ultimo_mensaje.length > 80 ? "…" : ""}</p>
+                                <p class="field-hint">${formatearFecha(c.fecha_ultimo_mensaje)}</p>
+                            </div>
+                        </div>
+                    `
+                )
+                .join("");
+
+            contenedor.querySelectorAll("[data-sesion]").forEach((el) => {
+                el.addEventListener("click", () => cargarConversacion(el.dataset.sesion));
+            });
+        }
+
+        async function cargarConversacion(sesionId) {
+            document.getElementById("tituloConversacion").innerText = `Conversación: ${sesionId}`;
+            const contenedor = document.getElementById("hiloConversacion");
+            contenedor.innerHTML = '<p class="empty-state">Cargando...</p>';
+
+            const mensajes = await (
+                await apiFetch(`/api/admin/conversaciones/${encodeURIComponent(sesionId)}`)
+            ).json();
+
+            contenedor.innerHTML = mensajes
+                .map(
+                    (m) => `
+                        <div class="admin-list-item" style="${m.rol === "usuario" ? "" : "background:#F1F8F2;"}">
+                            <div class="admin-list-item-info">
+                                <h3>${m.rol === "usuario" ? "🧑 Cliente" : "🦊 Guache"} <span class="field-hint">${formatearFecha(m.fecha)}</span></h3>
+                                <p>${escaparHtml(m.contenido)}</p>
+                            </div>
+                        </div>
+                    `
+                )
+                .join("");
+        }
+
+        (async () => {
+            const sesion = await requerirSesion();
+            if (!sesion) return;
+            cargarLista();
+        })();
+    </script>
+</body>
+</html>

@@ -58,7 +58,8 @@ Project_0/
 │   │   ├── productos.py           # CRUD del catálogo "Al Detal"
 │   │   ├── blog.py                # CRUD de artículos del blog
 │   │   ├── usuarios.py            # CRUD de cuentas del panel (solo rol admin)
-│   │   └── configuracion.py       # GET/PUT/DELETE del prompt del asistente
+│   │   ├── configuracion.py       # GET/PUT/DELETE del prompt del asistente
+│   │   └── conversaciones.py      # Listado y detalle del historial de chat (solo lectura)
 │   ├── bots/
 │   │   └── telegram_bot.py      # Bot de Telegram (python-telegram-bot)
 │   └── services/
@@ -74,7 +75,8 @@ Project_0/
 │   │   ├── productos.html         # Gestión del catálogo "Al Detal"
 │   │   ├── blog.html              # Gestión del blog
 │   │   ├── usuarios.html          # Gestión de cuentas (solo visible/accesible para rol admin)
-│   │   └── asistente.html         # Editar el prompt del asistente virtual
+│   │   ├── asistente.html         # Editar el prompt del asistente virtual
+│   │   └── conversaciones.html    # Ver historial de chat (web y Telegram)
 │   └── blog/
 │       ├── index.html             # Listado de artículos (dinámico, fetch a /api/blog/posts)
 │       └── post.html              # Plantilla única para cualquier artículo (dinámico por slug)
@@ -128,6 +130,8 @@ SQLAlchemy con un único modelo:
 
 **Migraciones (Alembic):** el esquema no se crea con `create_all()` al arrancar — se gestiona con Alembic (`alembic/`, configurado en `alembic/env.py` para usar el mismo `Base`/URL que `src/database.py`, una única fuente de verdad, funciona igual para SQLite y Postgres). Cualquier cambio de columna/tabla debe ir acompañado de una migración nueva (`alembic revision -m "..."`, editar `upgrade()`/`downgrade()`).
 
+> ⚠️ **Riesgo conocido — los tests no detectan que el modelo y la migración no coincidan.** El fixture de tests (`tests/conftest.py`) arma la base de prueba con `Base.metadata.create_all()`, es decir, **a partir del modelo de Python**, no corriendo las migraciones reales. Si a una columna del modelo se le olvida agregar la migración correspondiente (o sobra una que la migración no tiene), los 53 tests pasan igual — la tabla de prueba "coincide" porque se generó del mismo modelo con el bug. Pasó de verdad: al agregar `mensajes_chat` quedó una columna `fecha_actualizacion` en el modelo que la migración nunca creó; toda la suite pasó en verde, y recién se notó al probar contra una base migrada de verdad (`alembic upgrade head` + servidor real). **Por eso, para cualquier tabla nueva o columna nueva, no alcanza con `pytest` — hay que probar a mano contra una base con la migración aplicada antes de dar el cambio por terminado.**
+
 ### 4.3 Bot de Telegram — `src/bots/telegram_bot.py`
 
 Construido con `python-telegram-bot`. Maneja:
@@ -164,7 +168,7 @@ Sitio estático, sin build step, sin framework, sin gestor de paquetes de fronte
 - **Formulario de cotización** (`#cotizar`) → `POST /api/cotizar`.
 - **Footer** — contacto, navegación, estados con presencia.
 
-**Widget de chat flotante** ("Guache el zorro") con chips de sugerencia rápida → `POST /api/chat`, presente en todas las páginas (home, blog y panel de administración). El historial de conversación se mantiene solo en memoria del navegador (`chatHistory` en `app.js`), no se persiste en el backend.
+**Widget de chat flotante** ("Guache el zorro") con chips de sugerencia rápida → `POST /api/chat`, presente en todas las páginas (home, blog y panel de administración). `chatHistory` en `app.js` es solo memoria visual del navegador (para no perder los mensajes ya mostrados en pantalla) — el historial real que importa vive en el backend, ver §4.4/§4.7 y la tabla `mensajes_chat`.
 
 **Menú móvil:** a partir de 768px de ancho, la navegación colapsa a un botón hamburguesa (`inicializarMenuMovil()` en `app.js`); no depende de ningún framework, es toggle de clase CSS + `aria-expanded`.
 
@@ -228,6 +232,7 @@ Permite a personas sin conocimientos técnicos actualizar el catálogo "Al Detal
 - `blog.html` — lista + formulario de artículos (título, resumen, contenido, a quién está dirigido, imagen de portada, publicado/borrador).
 - `usuarios.html` — lista + formulario de cuentas (usuario, clave, rol, activo/inactivo). Solo rol `admin`: el link de navegación se oculta para `asistente` (`data-solo-admin` en `admin.js`) y la página redirige si igual entra por URL directa — la protección real de todos modos es del lado del servidor (`require_full_admin_role`), esto es solo UX.
 - `asistente.html` — textarea con el prompt de sistema del asistente virtual (`src/routers/configuracion.py`), botón para restaurar el valor por defecto. Visible para cualquier rol (admin o asistente), igual que catálogo y blog.
+- `conversaciones.html` — lista de sesiones de chat (web y Telegram) con conteo y último mensaje; clic en una para ver el hilo completo. Solo lectura.
 
 Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve igual que cualquier otra); la protección real está en que su JS llama a `requerirSesion()` al cargar (redirige a `login.html` si no hay sesión) y en que **todas** las rutas `/api/admin/*` exigen sesión.
 
@@ -236,6 +241,8 @@ Ninguna página HTML está protegida a nivel de archivo (`StaticFiles` las sirve
 **CRUD administrable** (`src/routers/productos.py`, `src/routers/blog.py`, `src/routers/usuarios.py`): endpoints públicos de solo lectura (`GET /api/detal/productos`, `GET /api/blog/posts[/​{slug}]` — solo devuelven ítems activos/publicados) y endpoints `/api/admin/...` con CRUD completo. El slug de un post se genera una sola vez al crearlo (a partir del título, desambiguado con `-2`, `-3`... si se repite) y **no cambia** aunque se edite el título después — mantiene estables los links ya compartidos.
 
 **Configuración del asistente** (`src/routers/configuracion.py`): `GET/PUT/DELETE /api/admin/configuracion/prompt` — lee/escribe la tabla `configuracion` (clave/valor genérico, hoy solo se usa esta clave). Ver §4.4 para cómo lo consume `llm_service.py`.
+
+**Conversaciones** (`src/routers/conversaciones.py`, `web/admin/conversaciones.html`): historial de chat, tabla `mensajes_chat` (§4.4). `GET /api/admin/conversaciones` agrupa mensajes por `sesion_id` en Python (no `GROUP BY` en SQL — más simple y portable SQLite/Postgres a este volumen; primer lugar a optimizar si el tráfico crece mucho). `GET /api/admin/conversaciones/{sesion_id}` devuelve el hilo completo, ordenado por fecha. Solo lectura — no hay forma de borrar conversaciones desde el panel todavía (dato pendiente de una política de retención, igual que las cotizaciones).
 
 **Cuentas iniciales** (`deploy/seed_usuarios.py`, idempotente, corre en cada deploy — no pisa cuentas ya creadas): `Developer_1` y `Senaida` con rol `admin`, `Assistent_1` con rol `asistente`. Cambiar o rotar esas claves se hace desde `usuarios.html` una vez logueado como `admin`, no editando el script.
 
@@ -317,7 +324,7 @@ Para quien se una al proyecto, esto es lo que hay que tener en cuenta **antes de
 7. ~~Prompt del asistente hardcodeado~~ — **Resuelto (agosto 2026).** Editable desde `/admin/asistente.html` sin necesidad de deploy (§4.4, §4.7). El texto hardcodeado en `llm_service.py` pasó a ser solo el valor por defecto.
 8. ~~Sin tests automatizados~~ — **Resuelto parcialmente (agosto 2026).** Suite básica con `pytest` + `TestClient` en `tests/` cubriendo health check, registro y listado de cotizaciones (incl. auth), y chat (con LLM mockeado). Falta cobertura de `src/bots/telegram_bot.py` y de los casos límite de `src/services/llm_service.py`.
 9. ~~Sin CI/CD~~ — **Resuelto (agosto 2026).** `.github/workflows/ci-cd.yml` corre `pytest` en cada push/PR a `main` (job `test`) y, si pasa y es un push directo a `main`, despliega automáticamente al VPS (job `deploy`, ver §4.6).
-10. **Historial de chat no persistido** — se pierde al recargar la página; no hay forma de dar seguimiento a una conversación de un cliente.
+10. ~~Historial de chat no persistido~~ — **Resuelto (agosto 2026).** Cada mensaje (web y Telegram) se guarda en `mensajes_chat`, agrupado por `sesion_id`, visible en `/admin/conversaciones.html` (§4.7). **Pendiente real:** no hay política de retención/borrado (son datos de clientes, igual que `cotizaciones.db` — mismo cuidado aplica); y la lista del panel se agrupa en Python trayendo todos los mensajes, no escala indefinidamente (ver nota en `src/routers/conversaciones.py`).
 
 ---
 

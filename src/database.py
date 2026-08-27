@@ -123,3 +123,20 @@ class ConfiguracionDB(Base):
     clave = Column(String, primary_key=True)
     valor = Column(Text, nullable=False)
     fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# Historial de conversaciones con el asistente virtual, web y Telegram.
+# sesion_id agrupa los mensajes de una misma conversación: en web es un
+# id generado en el navegador (sessionStorage, se pierde si se cierra la
+# pestaña); en Telegram es "telegram-{chat_id}" (estable, mismo chat de
+# Telegram siempre agrupa igual). No hay borrado/retención automática
+# todavía — son datos de clientes, mismo cuidado que cotizaciones.
+class MensajeChatDB(Base):
+    __tablename__ = "mensajes_chat"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sesion_id = Column(String, index=True, nullable=False)
+    canal = Column(String, nullable=False)  # "web" | "telegram"
+    rol = Column(String, nullable=False)  # "usuario" | "asistente"
+    contenido = Column(Text, nullable=False)
+    fecha = Column(DateTime, default=datetime.now, index=True)

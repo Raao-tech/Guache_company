@@ -1,5 +1,18 @@
-// MEMORIA DEL CHAT (Historial de conversación)
+// MEMORIA DEL CHAT (Historial de conversación, solo en memoria del navegador)
 const chatHistory = [];
+
+// ID de sesión para agrupar la conversación en el backend (visible desde
+// el panel de administración). Vive en sessionStorage: sobrevive a un
+// F5 de la página, se pierde si se cierra la pestaña — una conversación
+// nueva es una sesión nueva.
+function obtenerSesionIdChat() {
+    let sesionId = sessionStorage.getItem('guache_sesion_chat');
+    if (!sesionId) {
+        sesionId = crypto.randomUUID();
+        sessionStorage.setItem('guache_sesion_chat', sesionId);
+    }
+    return sesionId;
+}
 
 // Alternar visibilidad de la ventana de chat
 function toggleChat() {
@@ -231,9 +244,9 @@ async function enviarMensajeChat(event) {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 mensaje: mensajeTexto,
-                historial: chatHistory 
+                sesion_id: obtenerSesionIdChat(),
             })
         });
 
@@ -244,6 +257,9 @@ async function enviarMensajeChat(event) {
             typingDiv.innerHTML = data.respuesta.replace(/\n/g, '<br>');
             // Guardar respuesta del bot en el historial
             chatHistory.push({ role: 'assistant', content: data.respuesta });
+            // El backend genera el sesion_id la primera vez — nos aseguramos
+            // de tener guardado exactamente el mismo para el resto de la charla.
+            sessionStorage.setItem('guache_sesion_chat', data.sesion_id);
         } else {
             typingDiv.innerHTML = '⚠️ Ocurrió un detalle al consultar con el asistente.';
         }
